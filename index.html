@@ -204,6 +204,17 @@ select option{background:#1a1a26;}
           <select id="v-platform"><option>TikTok</option><option>Instagram Reels</option><option>YouTube Shorts</option><option>Shopee Video</option><option>General</option></select>
         </div>
       </div>
+      <div class="field">
+        <label>Gaya CTA</label>
+        <select id="v-cta-style">
+          <option value="standard">Standard — langsung ke action platform</option>
+          <option value="scarcity_stock">Scarcity Stok — "stoknya tinggal dikit"</option>
+          <option value="scarcity_time">Scarcity Waktu — "promo cuma sampe hari ini"</option>
+          <option value="social_proof">Social Proof — "udah ribuan yang order"</option>
+          <option value="fomo">FOMO — "yang udah coba nggak balik ke yang lain"</option>
+          <option value="soft_recommend">Soft Recommend — "worth banget buat dicoba"</option>
+        </select>
+      </div>
     </div>
     <div>
       <div class="slabel">Gaya Konten</div>
@@ -664,7 +675,7 @@ function loadingHTML(s){return`<div style="display:flex;flex-direction:column;ga
 function startCycle(arr){let i=0;return setInterval(()=>{i=(i+1)%arr.length;const el=document.getElementById('stxt');if(el)el.textContent=arr[i];},1900);}
 
 // ── VIDEO GENERATE ──
-function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi){
+function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi,ctaStyleKey){
   const sc=scOverride||scCount(), ps=psOverride||purposes(sc), lang=LANG[country];
   // CTA per platform × per country
   const CTA_MATRIX={
@@ -709,6 +720,44 @@ function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEduka
   const activeCTA=isEdukasi
     ? 'NO CTA — This is educational content. Do NOT mention any platform, cart, link, or call-to-action anywhere in this video.'
     : ctaGuide;
+
+  // CTA Style DNA — defines HOW the CTA is delivered (platform action stays the same)
+  const ctaStyleMap={
+    standard: `STANDARD CTA: Direct and clear. State the platform action naturally. Confident, not pushy.
+VO example ID: "Langsung aja ${activeCTA.split('|')[0].trim()} ya, gue juga udah order ulang ini"
+VO example EN: "Just ${activeCTA.split('|')[0].trim()} — honestly worth every penny"`,
+
+    scarcity_stock: `SCARCITY STOCK CTA: Create urgency through limited availability. Sound like you're giving a tip to a friend, not creating fake pressure. Make it feel real and specific.
+VO example ID: "Stoknya tinggal dikit banget, gue hampir nggak kebagian kemarin — kalau mau, ${activeCTA.split('|')[0].trim()} sekarang"
+VO example EN: "Stock is running low — I almost missed out so grab it while you can, ${activeCTA.split('|')[0].trim()}"
+Overlay badge: "STOK TERBATAS" / "LIMITED STOCK"
+Key: mention specific scarcity signal naturally (almost sold out, low stock, running low)`,
+
+    scarcity_time: `SCARCITY TIME CTA: Create urgency through limited time window. Feels like a genuine tip-off, not a hard sell.
+VO example ID: "Promonya cuma sampe malem ini doang — ${activeCTA.split('|')[0].trim()} sebelum kehabisan"
+VO example EN: "This deal ends today — ${activeCTA.split('|')[0].trim()} before it's gone"
+Overlay badge: "HARI INI AJA" / "TODAY ONLY"
+Key: reference a specific time pressure (today only, ends tonight, flash sale)`,
+
+    social_proof: `SOCIAL PROOF CTA: Leverage crowd validation to drive action. Sound like you're surprised by how popular it is.
+VO example ID: "Udah ribuan yang pesen ini bulan ini, dan gue nggak heran — ${activeCTA.split('|')[0].trim()} sebelum habis lagi"
+VO example EN: "Thousands of orders this month and honestly I get why — ${activeCTA.split('|')[0].trim()} before it sells out again"
+Overlay badge: "TERLARIS" / "BESTSELLER"
+Key: include a social signal (thousands ordered, sold out twice, everyone's talking about)`,
+
+    fomo: `FOMO CTA: Make the viewer feel they'll regret missing out. Personal experience angle — you've seen the results, they haven't yet.
+VO example ID: "Yang udah nyoba ini pada nggak mau balik ke yang lain — gue ngerti banget kenapa. ${activeCTA.split('|')[0].trim()} deh"
+VO example EN: "Everyone who's tried this never goes back to anything else. Don't miss out — ${activeCTA.split('|')[0].trim()}"
+Overlay badge: "JANGAN NYESEL" / "DON'T MISS OUT"
+Key: contrast between those who have it vs those who don't (yet)`,
+
+    soft_recommend: `SOFT RECOMMEND CTA: Low pressure, genuine recommendation. Feels like advice from a trusted friend, not a sales pitch.
+VO example ID: "Kalau lagi penasaran sama produk kayak gini, ini worth banget buat dicoba — ${activeCTA.split('|')[0].trim()} aja dulu"
+VO example EN: "If you've been curious about something like this, honestly just try it — ${activeCTA.split('|')[0].trim()}"
+Overlay badge: "WORTH IT" / "COBAIN DULU"
+Key: soft entry ("just try", "if you're curious"), zero pressure language`
+  };
+  const ctaStyleDNA=ctaStyleMap[ctaStyleKey]||ctaStyleMap['standard'];
   const eduBlock=isEdukasi?`
 =========================================================
 EDUKASI MODE — MANDATORY RULES
@@ -808,6 +857,16 @@ CTA RULES FOR ${social.toUpperCase()}
 =========================================================
 ${activeCTA}
 Apply this CTA to: voice_over ending, final scene overlay_design badge + headline, director_notes.
+
+=========================================================
+CTA STYLE — HOW TO DELIVER THE CTA
+=========================================================
+The platform action above tells you WHAT to ask (klik keranjang, link di bio, etc).
+This CTA Style tells you HOW to frame and deliver it in voice_over and overlay:
+
+${ctaStyleDNA}
+
+Apply this CTA style DNA to: final scene voice_over_script, final scene overlay_design badge text, final scene headline text.
 
 ${eduBlock}
 ${herbalBlock}
@@ -1046,7 +1105,8 @@ async function generateVideo(angleCount=1){
   const sc=scCount(), ps=purposes(sc), lang=LANG[country];
   const isHerbal=document.getElementById('herbal-mode')?.checked||false;
   const isEdukasi=vStyle==='Edukasi';
-  const sys=buildSystemPrompt(country,social,sc,ps,isHerbal,isEdukasi);
+  const ctaStyleKey=document.getElementById('v-cta-style')?.value||'standard';
+  const sys=buildSystemPrompt(country,social,sc,ps,isHerbal,isEdukasi,ctaStyleKey);
 
   const baseParts=[];
   if(b64store.vp) baseParts.push({type:'image',source:{type:'base64',media_type:b64store.vp.mime,data:b64store.vp.data}});
@@ -1381,7 +1441,8 @@ MARKETING ANGLE — LOCKED FOR THIS REQUEST
 You MUST use the "${retryAngle}" angle. Do not use any other angle. Do not rotate.`;
     const isHerbal=document.getElementById('herbal-mode')?.checked||false;
     const isEdukasi=vStyle==='Edukasi';
-    const sys=buildSystemPrompt(country,social,retrySc,ps,isHerbal,isEdukasi);
+    const ctaStyleKey=document.getElementById('v-cta-style')?.value||'standard';
+    const sys=buildSystemPrompt(country,social,retrySc,ps,isHerbal,isEdukasi,ctaStyleKey);
     const sysFinal=sys.replace(`=========================================================
 MARKETING ANGLE — pick ONE, never repeat
 =========================================================
