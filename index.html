@@ -723,41 +723,53 @@ function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEduka
   // Extract just the platform action verb (before first |) for clean VO embedding
   const ctaAction=isEdukasi ? '' : ctaGuide.split('|')[0].trim();
 
-  // CTA Style DNA — defines HOW the CTA is delivered (platform action stays the same)
+  // CTA Style DNA — Standard keeps platform action; all other styles remove it entirely
   const ctaStyleMap={
-    standard: `STANDARD CTA: Direct and clear. State the platform action naturally. Confident, not pushy.
+    standard: `STANDARD CTA: Direct and clear. State the platform action naturally at the end of the VO. Confident, not pushy.
 VO example ID: "Langsung aja ${ctaAction} ya, gue juga udah order ulang ini"
-VO example EN: "Just ${ctaAction} — honestly worth every penny"`,
+VO example EN: "Just ${ctaAction} — honestly worth every penny"
+Overlay badge: use platform default (e.g. "Klik Keranjang Kuning!", "Link di Bio!")
+RULE: mention the platform action (${ctaAction}) in the VO ending.`,
 
-    scarcity_stock: `SCARCITY STOCK CTA: Create urgency through limited availability. Sound like you're giving a tip to a friend, not creating fake pressure. Make it feel real and specific.
-VO example ID: "Stoknya tinggal dikit banget, gue hampir nggak kebagian kemarin — kalau mau, ${ctaAction} sekarang"
-VO example EN: "Stock is running low — I almost missed out so grab it while you can, ${ctaAction}"
+    scarcity_stock: `SCARCITY STOCK CTA: End the video with stock urgency ONLY. Do NOT mention the platform action, cart, link, or any platform UI element anywhere.
+VO example ID: "Stoknya tinggal 3pcs nih, buruan amanin sebelum kehabisan"
+VO example ID alt: "Gue hampir nggak kebagian kemarin — kalau mau, jangan tunda lagi"
+VO example EN: "Stock is almost gone — grab yours before it sells out"
 Overlay badge: "STOK TERBATAS" / "LIMITED STOCK"
-Key: mention specific scarcity signal naturally (almost sold out, low stock, running low)`,
+Overlay headline: max 4 words about scarcity (e.g. "Hampir Habis!", "Stok Tipis!")
+STRICT RULE: ZERO mention of keranjang, cart, link, bio, deskripsi, or any platform action. The VO ends with the scarcity message only.`,
 
-    scarcity_time: `SCARCITY TIME CTA: Create urgency through limited time window. Feels like a genuine tip-off, not a hard sell.
-VO example ID: "Promonya cuma sampe malem ini doang — ${ctaAction} sebelum kehabisan"
-VO example EN: "This deal ends today — ${ctaAction} before it's gone"
+    scarcity_time: `SCARCITY TIME CTA: End the video with time urgency ONLY. Do NOT mention the platform action, cart, link, or any platform UI element anywhere.
+VO example ID: "Promonya cuma sampe malem ini doang, jangan sampe nyesel ya"
+VO example ID alt: "Flash sale-nya abis jam 12 malem — ini kesempatan terakhir"
+VO example EN: "This deal ends tonight — don't miss it"
 Overlay badge: "HARI INI AJA" / "TODAY ONLY"
-Key: reference a specific time pressure (today only, ends tonight, flash sale)`,
+Overlay headline: max 4 words about time pressure (e.g. "Berakhir Hari Ini!", "Cuma Hari Ini!")
+STRICT RULE: ZERO mention of keranjang, cart, link, bio, deskripsi, or any platform action. The VO ends with the time urgency only.`,
 
-    social_proof: `SOCIAL PROOF CTA: Leverage crowd validation to drive action. Sound like you're surprised by how popular it is.
-VO example ID: "Udah ribuan yang pesen ini bulan ini, dan gue nggak heran — ${ctaAction} sebelum habis lagi"
-VO example EN: "Thousands of orders this month and honestly I get why — ${ctaAction} before it sells out again"
+    social_proof: `SOCIAL PROOF CTA: End the video with crowd validation ONLY. Do NOT mention the platform action, cart, link, or any platform UI element anywhere.
+VO example ID: "Udah 2000an yang order bulan ini — wajar sih, ini emang beda banget"
+VO example ID alt: "Rating-nya 4.9 dari ribuan review, gue nggak heran sama sekali"
+VO example EN: "Over two thousand orders this month and I totally get why"
 Overlay badge: "TERLARIS" / "BESTSELLER"
-Key: include a social signal (thousands ordered, sold out twice, everyone's talking about)`,
+Overlay headline: max 4 words about social proof (e.g. "Ribuan Sudah Buktikan", "Top Seller!")
+STRICT RULE: ZERO mention of keranjang, cart, link, bio, deskripsi, or any platform action. The VO ends with the social proof signal only.`,
 
-    fomo: `FOMO CTA: Make the viewer feel they'll regret missing out. Personal experience angle — you've seen the results, they haven't yet.
-VO example ID: "Yang udah nyoba ini pada nggak mau balik ke yang lain — gue ngerti banget kenapa. ${ctaAction} deh"
-VO example EN: "Everyone who's tried this never goes back to anything else. Don't miss out — ${ctaAction}"
+    fomo: `FOMO CTA: End the video making the viewer feel they'll miss out ONLY. Do NOT mention the platform action, cart, link, or any platform UI element anywhere.
+VO example ID: "Yang udah nyoba ini pada nggak mau balik ke yang lain — serius, gue ngerti banget kenapa"
+VO example ID alt: "Kalau belum coba ini, kamu belum tau yang kamu lewatin"
+VO example EN: "Everyone who tries this never goes back — and honestly I get it"
 Overlay badge: "JANGAN NYESEL" / "DON'T MISS OUT"
-Key: contrast between those who have it vs those who don't (yet)`,
+Overlay headline: max 4 words about FOMO (e.g. "Jangan Sampai Menyesal", "Yang Lain Udah Tau!")
+STRICT RULE: ZERO mention of keranjang, cart, link, bio, deskripsi, or any platform action. The VO ends with the FOMO message only.`,
 
-    soft_recommend: `SOFT RECOMMEND CTA: Low pressure, genuine recommendation. Feels like advice from a trusted friend, not a sales pitch.
-VO example ID: "Kalau lagi penasaran sama produk kayak gini, ini worth banget buat dicoba — ${ctaAction} aja dulu"
-VO example EN: "If you've been curious about something like this, honestly just try it — ${ctaAction}"
+    soft_recommend: `SOFT RECOMMEND CTA: End the video with a genuine low-pressure recommendation ONLY. Do NOT mention the platform action, cart, link, or any platform UI element anywhere.
+VO example ID: "Kalau lagi penasaran sama produk kayak gini, ini worth banget buat dicoba sekali"
+VO example ID alt: "Gue nggak maksa, tapi kalau mau coba — menurutku bakal suka deh"
+VO example EN: "If you've been curious, honestly it's worth trying at least once"
 Overlay badge: "WORTH IT" / "COBAIN DULU"
-Key: soft entry ("just try", "if you're curious"), zero pressure language`
+Overlay headline: max 4 words soft recommendation (e.g. "Worth Banget Dicoba", "Coba Dulu Aja!")
+STRICT RULE: ZERO mention of keranjang, cart, link, bio, deskripsi, or any platform action. The VO ends with the soft recommendation only.`
   };
   const ctaStyleDNA=ctaStyleMap[ctaStyleKey]||ctaStyleMap['standard'];
   const eduBlock=isEdukasi?`
@@ -855,25 +867,24 @@ Video generator platforms: ${vPlatforms.join(', ')}
 Social platform: ${social}
 
 =========================================================
-CTA RULES FOR ${social.toUpperCase()}
+CTA RULES FOR FINAL SCENE — READ CAREFULLY
 =========================================================
-Platform action (WHAT to ask the viewer to do): ${ctaAction}
-Platform badge color: ${activeCTA.split('|')[1]?.trim()||''}
-Use this platform action in the VO ending — but the BADGE TEXT and HEADLINE must come from the CTA Style below, NOT from the platform default.
+${ctaStyleKey === 'standard'
+  ? `ACTIVE STYLE: STANDARD
+Platform: ${social} | Country: ${activeCTA.split('|')[0]?.trim()||''}
+Badge color: ${activeCTA.split('|')[1]?.trim()||''}
+→ VO ending MUST mention the platform action: "${ctaAction}"
+→ Overlay badge: use platform default text (e.g. "Klik Keranjang Kuning!", "Link di Bio!")
+→ Headline: reference the platform action`
+  : `ACTIVE STYLE: ${ctaStyleKey.toUpperCase().replace('_',' ')}
+→ ZERO platform action in VO, badge, headline, or director_notes
+→ Do NOT say: "${ctaAction}", keranjang, cart, link di bio, deskripsi, or any platform UI element
+→ VO ending, badge, and headline come ENTIRELY from the CTA Style below`}
 
 =========================================================
-CTA STYLE — HOW TO DELIVER THE CTA (THIS OVERRIDES DEFAULT BADGE/OVERLAY)
+CTA STYLE DNA — FOLLOW THIS EXACTLY
 =========================================================
-The platform action above tells you WHAT to ask (klik keranjang, link di bio, etc).
-This CTA Style tells you HOW to frame it — and its badge/overlay text REPLACES the platform default badge.
-
 ${ctaStyleDNA}
-
-CRITICAL OVERLAY RULE FOR FINAL SCENE:
-- badge text → use the badge from CTA Style above (e.g. "STOK TERBATAS", "TERLARIS", "JANGAN NYESEL", "WORTH IT") — NOT the platform default like "Klik Keranjang Kuning!"
-- headline → reflect the CTA Style angle (urgency / social proof / FOMO / soft recommend)
-- voice_over_script → weave the platform action naturally using the CTA Style framing above
-- director_notes → reinforce the CTA Style mood${ctaStyleKey === 'standard' ? '\n\nNOTE: Standard style — badge and overlay may reference the platform action directly.' : ''}
 
 ${eduBlock}
 ${herbalBlock}
