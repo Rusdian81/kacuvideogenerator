@@ -313,7 +313,7 @@ select option{background:#1a1a26;}
 </main>
 
 <script>
-const MODEL="gemini-3.5-flash";
+const MODEL="gemini-2.5-flash";
 const b64store={vp:null,vt:null,ip:null,it:null};
 // JSON extraction helpers
 function extractJSON(raw){
@@ -1131,7 +1131,7 @@ async function generateVideo(angleCount=1){
   if(b64store.vt) baseParts.push({type:'image',source:{type:'base64',media_type:b64store.vt.mime,data:b64store.vt.data}});
 
   const vout=document.getElementById('v-out');
-  vout.innerHTML=loadingHTML(angleCount>1?'Generating '+angleCount+' angles secara paralel...':'Menganalisis produk dan memilih marketing angle...');
+  vout.innerHTML=loadingHTML(angleCount>1?'Generating '+angleCount+' angles (sequential, ~'+((angleCount-1)*7+15)+'s)...':'Menganalisis produk dan memilih marketing angle...');
   const timer=startCycle(['Menganalisis produk...','Menyusun storyboard '+sc+' scene...','Menulis visual & motion prompt...','Membuat voice over script...','Finalisasi JSON...']);
 
   const ANGLE_LIST=['Problem','Curiosity','Hidden Benefit','Life Hack','Comparison','Pattern Interrupt','POV','Story','Before After','Emotional','Secret','Shocking Fact','Myth','Expert Tip'];
@@ -1174,10 +1174,23 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
   }
 
   try{
-    // Run all angle fetches IN PARALLEL — each is isolated via try/catch above,
-    // so Promise.all here is now safe (no single failure cancels the rest)
-    const promises=Array.from({length:angleCount},(_,ai)=>fetchAngle(ai));
-    const results=await Promise.all(promises);
+    // Run angle fetches SEQUENTIALLY with delay to avoid Gemini 10 RPM rate limit
+    // Free tier = 10 RPM = ~6s per request minimum. We use 7s gap to be safe.
+    const results=[];
+    for(let ai=0;ai<angleCount;ai++){
+      if(ai>0){
+        const waitSec=7;
+        const el=document.getElementById('stxt');
+        for(let w=waitSec;w>0;w--){
+          if(el) el.textContent=`Angle ${ai+1}/${angleCount} — menunggu ${w}s (rate limit)...`;
+          await new Promise(ok=>setTimeout(ok,1000));
+        }
+      }
+      const el=document.getElementById('stxt');
+      if(el) el.textContent=`Generating angle ${ai+1} dari ${angleCount}...`;
+      const result=await fetchAngle(ai);
+      results.push(result);
+    }
     clearInterval(timer);
     renderVideoResults(results,name,sc);
   }catch(err){clearInterval(timer);vout.innerHTML=errBox(err.message);}
