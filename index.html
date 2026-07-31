@@ -1254,7 +1254,7 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
     const fcDetailsLine=isFC?`\nFactory Region: ${fcRegion}\nCrisis Type: ${fcCrisis}`:'';
     const talentLine=isFC?'':`\nTalent: ${talent||'auto'}`;
     const angleLine=isFC?'Factory Crisis Narrative':(requestedAngles[ai]||'auto');
-    const parts=[...baseParts,{type:'text',text:`Product: ${name||'(no specific product)'}\nDesc: ${desc||'see image if provided'}${talentLine}\nCountry: ${country}\nStyle: ${vStyle}${eduTopic?'\nEdu Topic: '+eduTopic:''}${fcDetailsLine}\n${sc} scenes @ ${vScene}s | Purposes: ${ps.join(', ')}\nAngle: ${angleLine}\nGenerate complete JSON.\`}];
+    const parts=[...baseParts,{type:'text',text:`Product: ${name||'(no specific product)'}\nDesc: ${desc||'see image if provided'}${talentLine}\nCountry: ${country}\nStyle: ${vStyle}${eduTopic?'\nEdu Topic: '+eduTopic:''}${fcDetailsLine}\n${sc} scenes @ ${vScene}s | Purposes: ${ps.join(', ')}\nAngle: ${angleLine}\nGenerate complete JSON.`}];
     // Each angle fetch is isolated — if it fails, return an error result instead of throwing,
     // so one failed angle never breaks the other angles in Promise.all
     try{
