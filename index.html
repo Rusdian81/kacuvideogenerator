@@ -154,7 +154,7 @@ select option{background:#1a1a26;}
   <div><div class="logo-text">OMNI FLASH</div><div class="logo-sub">Cinematic AI Studio v4.0</div></div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
     <input type="password" id="gemini-key" placeholder="Paste Gemini API Key — gratis di aistudio.google.com" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:5px 11px;width:260px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-    <div class="hdr-badge" id="model-badge">gemini-3.5-flash</div>
+    <div class="hdr-badge" id="model-badge">Gemini 2.5 Flash</div>
   </div>
 </header>
 <div class="main-tabs">
@@ -313,12 +313,9 @@ select option{background:#1a1a26;}
 </main>
 
 <script>
-// Model fallback chain — kalau model pertama overloaded, otomatis turun ke berikutnya
-const MODELS=['gemini-3.5-flash','gemini-2.5-flash','gemini-2.5-flash-lite'];
-let _mIdx=0;
-function getModel(){return MODELS[_mIdx];}
-function resetModel(){_mIdx=0;}
-function nextModel(){_mIdx=Math.min(_mIdx+1,MODELS.length-1);return MODELS[_mIdx];}
+const MODEL="gemini-3.5-flash";
+// Fallback chain: kalau model utama lagi overload (503/429), coba model lain sebelum nyerah
+const MODEL_FALLBACKS=["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-2.5-flash"];
 const b64store={vp:null,vt:null,ip:null,it:null};
 // JSON extraction helpers
 function extractJSON(raw){
@@ -366,47 +363,44 @@ function getKey(){
   if(!k){alert('Masukkan Gemini API Key dulu!');throw new Error('API key kosong');}
   return k;
 }
-function geminiAPI(key,mdl){
-  return`https://generativelanguage.googleapis.com/v1beta/models/${mdl||getModel()}:generateContent?key=${key}`;
+function geminiAPI(key,model){
+  return`https://generativelanguage.googleapis.com/v1beta/models/${model||MODEL}:generateContent?key=${key}`;
 }
 
-// Fetch with auto-retry + model fallback
-// gemini-3.5-flash → gemini-2.5-flash → gemini-2.5-flash-lite
-async function geminiWithRetry(key, body, maxRetries=4){
-  let lastErr='';
-  resetModel();
-  for(let r=0;r<maxRetries;r++){
-    const mdl=getModel();
-    try{
-      const el=document.getElementById('stxt');
-      if(r>0&&el) el.textContent=`Mencoba ${mdl}... (${r+1}/${maxRetries})`;
-      const res=await fetch(geminiAPI(key,mdl),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const data=await res.json();
-      if(data.error){
-        const status=data.error.status||'';
-        const code=data.error.code||0;
-        // 503 overloaded / 429 rate limit / 500 server error → fallback ke model berikutnya
-        if(status==='UNAVAILABLE'||status==='RESOURCE_EXHAUSTED'||code===503||code===429||code===500){
-          lastErr=data.error.message;
-          const nxt=nextModel();
-          const wait=r===0?6000:(r+1)*8000; // 6s, 16s, 24s
-          const el2=document.getElementById('stxt');
-          if(el2) el2.textContent=`${mdl} overloaded → beralih ke ${nxt}, tunggu ${Math.round(wait/1000)}s...`;
-          await new Promise(ok=>setTimeout(ok,wait));
-          continue;
+// Fetch with auto-retry + auto-fallback across models (kalau satu model overload, coba model lain)
+async function geminiWithRetry(key, body, maxRetries=2){
+  let lastErr=null;
+  for(let m=0;m<MODEL_FALLBACKS.length;m++){
+    const model=MODEL_FALLBACKS[m];
+    for(let r=0;r<maxRetries;r++){
+      try{
+        const res=await fetch(geminiAPI(key,model),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const data=await res.json();
+        if(data.error){
+          const status=data.error.status||'';
+          if(status==='UNAVAILABLE'||status==='RESOURCE_EXHAUSTED'||data.error.code===503||data.error.code===429){
+            lastErr=data.error.message;
+            const waitMs=(r+1)*3000;
+            const el=document.getElementById('stxt');
+            if(el) el.textContent=`${model} sibuk, retry ${r+1}/${maxRetries}... tunggu ${waitMs/1000}s`;
+            await new Promise(ok=>setTimeout(ok,waitMs));
+            continue;
+          }
+          throw new Error('Gemini API Error: '+data.error.message+'\n\nStatus: '+data.error.status);
         }
-        throw new Error(data.error.message+' ['+data.error.status+']');
+        if(r>0||m>0){const el=document.getElementById('stxt');if(el) el.textContent=`Berhasil pakai ${model}`+(r>0?' (retry '+(r+1)+')':'');}
+        return data;
+      }catch(err){
+        if(err.message.startsWith('Gemini API Error:')) throw err;
+        lastErr=err.message;
+        if(r<maxRetries-1) await new Promise(ok=>setTimeout(ok,2000));
       }
-      if(r>0){const el2=document.getElementById('stxt');if(el2) el2.textContent=`OK dengan ${mdl}`;}
-      return data;
-    }catch(err){
-      if(err.message.includes('[') && !err.message.includes('fetch')) throw err;
-      lastErr=err.message;
-      nextModel();
-      if(r<maxRetries-1) await new Promise(ok=>setTimeout(ok,5000));
     }
+    // Model ini abis dicoba maxRetries kali dan masih gagal -> pindah ke model fallback berikutnya
+    const el=document.getElementById('stxt');
+    if(el&&m<MODEL_FALLBACKS.length-1) el.textContent=`${model} masih sibuk, coba model lain: ${MODEL_FALLBACKS[m+1]}...`;
   }
-  throw new Error('Gemini sedang sibuk. Coba lagi dalam 2-3 menit.\n\nDetail: '+lastErr);
+  throw new Error('Semua model Gemini sedang sibuk (dicoba: '+MODEL_FALLBACKS.join(', ')+'). Coba lagi dalam 1-2 menit.\n\nDetail: '+lastErr);
 }
 
 // Build Gemini request body from system prompt + parts (text + optional images)
@@ -420,7 +414,7 @@ function buildGeminiBody(system, parts){
   }).filter(Boolean);
   if(system) gParts.unshift({text:'SYSTEM INSTRUCTIONS:\n'+system+'\n\n---\n'});
   contents.push({role:'user',parts:gParts});
-  return{contents,generationConfig:{maxOutputTokens:8192}};
+  return{contents,generationConfig:{maxOutputTokens:8192,temperature:0.9}};
 }
 
 // Extract text from Gemini response
