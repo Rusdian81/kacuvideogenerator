@@ -154,7 +154,7 @@ select option{background:#1a1a26;}
   <div><div class="logo-text">OMNI FLASH</div><div class="logo-sub">Cinematic AI Studio v4.0</div></div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
     <input type="password" id="gemini-key" placeholder="Paste Gemini API Key — gratis di aistudio.google.com" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:5px 11px;width:260px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-    <div class="hdr-badge" id="model-badge">Gemini 2.5 Flash</div>
+    <div class="hdr-badge" id="model-badge">gemini-3.5-flash</div>
   </div>
 </header>
 <div class="main-tabs">
@@ -313,7 +313,12 @@ select option{background:#1a1a26;}
 </main>
 
 <script>
-const MODEL="gemini-3.5-flash";
+// Model fallback chain — kalau model pertama overloaded, otomatis turun ke berikutnya
+const MODELS=['gemini-3.5-flash','gemini-2.5-flash','gemini-2.5-flash-lite'];
+let _mIdx=0;
+function getModel(){return MODELS[_mIdx];}
+function resetModel(){_mIdx=0;}
+function nextModel(){_mIdx=Math.min(_mIdx+1,MODELS.length-1);return MODELS[_mIdx];}
 const b64store={vp:null,vt:null,ip:null,it:null};
 // JSON extraction helpers
 function extractJSON(raw){
@@ -361,38 +366,47 @@ function getKey(){
   if(!k){alert('Masukkan Gemini API Key dulu!');throw new Error('API key kosong');}
   return k;
 }
-function geminiAPI(key){
-  return`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+function geminiAPI(key,mdl){
+  return`https://generativelanguage.googleapis.com/v1beta/models/${mdl||getModel()}:generateContent?key=${key}`;
 }
 
-// Fetch with auto-retry (same model, max 3 attempts)
-async function geminiWithRetry(key, body, maxRetries=3){
-  let lastErr=null;
+// Fetch with auto-retry + model fallback
+// gemini-3.5-flash → gemini-2.5-flash → gemini-2.5-flash-lite
+async function geminiWithRetry(key, body, maxRetries=4){
+  let lastErr='';
+  resetModel();
   for(let r=0;r<maxRetries;r++){
+    const mdl=getModel();
     try{
-      const res=await fetch(geminiAPI(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const el=document.getElementById('stxt');
+      if(r>0&&el) el.textContent=`Mencoba ${mdl}... (${r+1}/${maxRetries})`;
+      const res=await fetch(geminiAPI(key,mdl),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await res.json();
       if(data.error){
         const status=data.error.status||'';
-        if(status==='UNAVAILABLE'||status==='RESOURCE_EXHAUSTED'||data.error.code===503||data.error.code===429){
+        const code=data.error.code||0;
+        // 503 overloaded / 429 rate limit / 500 server error → fallback ke model berikutnya
+        if(status==='UNAVAILABLE'||status==='RESOURCE_EXHAUSTED'||code===503||code===429||code===500){
           lastErr=data.error.message;
-          const waitMs=(r+1)*3000;
-          const el=document.getElementById('stxt');
-          if(el) el.textContent=`Gemini sibuk, retry ${r+1}/${maxRetries}... tunggu ${waitMs/1000}s`;
-          await new Promise(ok=>setTimeout(ok,waitMs));
+          const nxt=nextModel();
+          const wait=r===0?6000:(r+1)*8000; // 6s, 16s, 24s
+          const el2=document.getElementById('stxt');
+          if(el2) el2.textContent=`${mdl} overloaded → beralih ke ${nxt}, tunggu ${Math.round(wait/1000)}s...`;
+          await new Promise(ok=>setTimeout(ok,wait));
           continue;
         }
-        throw new Error('Gemini API Error: '+data.error.message+'\n\nStatus: '+data.error.status);
+        throw new Error(data.error.message+' ['+data.error.status+']');
       }
-      if(r>0){const el=document.getElementById('stxt');if(el) el.textContent='Berhasil setelah retry '+(r+1);}
+      if(r>0){const el2=document.getElementById('stxt');if(el2) el2.textContent=`OK dengan ${mdl}`;}
       return data;
     }catch(err){
-      if(err.message.startsWith('Gemini API Error:')) throw err;
+      if(err.message.includes('[') && !err.message.includes('fetch')) throw err;
       lastErr=err.message;
-      if(r<maxRetries-1) await new Promise(ok=>setTimeout(ok,2000));
+      nextModel();
+      if(r<maxRetries-1) await new Promise(ok=>setTimeout(ok,5000));
     }
   }
-  throw new Error('Gemini sedang sibuk. Coba lagi dalam 1-2 menit.\n\nDetail: '+lastErr);
+  throw new Error('Gemini sedang sibuk. Coba lagi dalam 2-3 menit.\n\nDetail: '+lastErr);
 }
 
 // Build Gemini request body from system prompt + parts (text + optional images)
