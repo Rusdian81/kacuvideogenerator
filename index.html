@@ -183,7 +183,7 @@ select option{background:#1a1a26;}
       <label>Topik edukasi <span style="color:var(--success);font-size:11px;">(opsional jika ada produk)</span></label>
       <input type="text" id="edu-topic" placeholder="cth: Manfaat vitamin C untuk kulit, Tips memilih skincare...">
     </div>
-    <div id="talent-section">
+    <div>
       <div class="slabel">Upload Talent (opsional)</div>
       <div class="upload-zone" id="vt-zone">
         <input type="file" id="vt-file" accept="image/*" onchange="handleUpload(event,'vt')">
@@ -204,7 +204,7 @@ select option{background:#1a1a26;}
           <select id="v-platform"><option>TikTok</option><option>Instagram Reels</option><option>YouTube Shorts</option><option>Shopee Video</option><option>General</option></select>
         </div>
       </div>
-      <div class="field" id="cta-style-row">
+      <div class="field">
         <label>Gaya CTA</label>
         <select id="v-cta-style">
           <option value="standard">Standard — langsung ke action platform</option>
@@ -226,30 +226,6 @@ select option{background:#1a1a26;}
         <div class="pill" data-val="Before After">Before/After</div>
         <div class="pill" data-val="POV Creator">POV Creator</div>
         <div class="pill" data-val="Edukasi" style="border-color:rgba(74,222,128,.3);color:var(--success);">Edukasi</div>
-        <div class="pill" data-val="Factory Crisis" style="border-color:rgba(252,92,125,.3);color:var(--accent2);">🏭 Factory Crisis</div>
-      </div>
-    </div>
-    <!-- Factory Crisis extra fields — hidden by default -->
-    <div id="factory-fields" style="display:none;flex-direction:column;gap:10px;">
-      <div class="divider"></div>
-      <div class="slabel" style="color:var(--accent2);">🏭 Factory Crisis Settings</div>
-      <div class="field">
-        <label>Region Pabrik</label>
-        <select id="fc-region">
-          <option value="Southeast Asia">Asia Tenggara (Indonesia/Malaysia/Vietnam)</option>
-          <option value="China">China (Guangzhou / Shenzhen / Yiwu)</option>
-          <option value="South Asia">Asia Selatan (India / Bangladesh)</option>
-          <option value="East Asia">Asia Timur (Korea / Jepang)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Jenis Krisis</label>
-        <select id="fc-crisis">
-          <option value="overstock">Overstock — gudang penuh, harus clearance segera</option>
-          <option value="bottleneck">Bottleneck — jalur produksi terhambat, unit menumpuk</option>
-          <option value="deadline">Deadline Darurat — order ekspor batal, stok harus dilepas</option>
-          <option value="machine_issue">Machine Issue — mesin turun, produksi dialihkan ke online</option>
-        </select>
       </div>
     </div>
     <div>
@@ -299,7 +275,7 @@ select option{background:#1a1a26;}
     </div>
     <div class="field"><label>Nama produk</label><input type="text" id="ip-name" placeholder="Nama produk"></div>
     <div class="field"><label>Deskripsi / keunggulan</label><textarea id="ip-desc" placeholder="Fungsi, bahan unggulan, target pasar..."></textarea></div>
-    <div id="talent-section">
+    <div>
       <div class="slabel">Upload Talent (opsional)</div>
       <div class="upload-zone" id="it-zone">
         <input type="file" id="it-file" accept="image/*" onchange="handleUpload(event,'it')">
@@ -579,19 +555,12 @@ function makePills(groupId,cb){
 makePills('v-style',v=>{
   vStyle=v;
   const isEdu = v==='Edukasi';
-  const isFC = v==='Factory Crisis';
-  // Edukasi topic field
   const eduField = document.getElementById('edu-topic-field');
+  const nameLabel = document.querySelector('label[for="vp-name"]')||document.querySelector('.field label');
+  const platformRow = document.querySelector('#v-platform')?.closest('.grid-2');
   if(eduField) eduField.style.display = isEdu ? '' : 'none';
-  // Factory Crisis extra fields
-  const fcFields = document.getElementById('factory-fields');
-  if(fcFields) fcFields.style.display = isFC ? 'flex' : 'none';
-  // Talent section — hidden for Factory Crisis (no talent in pabrik)
-  const talentSection = document.getElementById('talent-section');
-  if(talentSection) talentSection.style.display = isFC ? 'none' : '';
-  // CTA style dropdown — hidden for Factory Crisis (CTA is always built-in to the concept)
-  const ctaRow = document.getElementById('cta-style-row');
-  if(ctaRow) ctaRow.style.display = isFC ? 'none' : '';
+  // Edukasi: sembunyikan platform sosial (tidak ada CTA = tidak perlu platform)
+  // Tapi tetap tampilkan untuk keperluan bahasa
 });
 makePills('v-dur',v=>{vDur=parseInt(v);updateSI();});
 
@@ -637,18 +606,14 @@ async function submitLicense(){
   btn.textContent = 'Memvalidasi...';
 
   try{
-    // Hash key pakai SHA-256, bandingkan dengan hash yang tersimpan
-    const msgBuf = new TextEncoder().encode(key);
-    const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf);
-    const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const res = await fetch('/api/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const data = await res.json();
 
-    const VALID_HASHES = [
-      'f7cd984ec8cfd898f281c7e9f2f164e1d72a675bde056b33aeecc1de5c3d8cd1',
-      'e917593128913ca13866ee8b3f86052c7ca79437d7b826f4705c982f8e4ec0f6',
-      '56386177441e022e2df9b276bf3422b682a31e8f693a59bc51059ee7cad051ad',
-    ];
-
-    if(VALID_HASHES.includes(hashHex)){
+    if(data.valid){
       localStorage.setItem('omniflash_license', 'valid');
       document.getElementById('license-gate').classList.add('hidden');
       btn.textContent = 'Aktivasi';
@@ -661,7 +626,7 @@ async function submitLicense(){
       btn.disabled = false;
     }
   }catch(err){
-    errEl.textContent = 'Gagal memvalidasi key. Coba lagi.';
+    errEl.textContent = 'Gagal terhubung ke server validasi. Coba lagi.';
     errEl.classList.add('visible');
     btn.textContent = 'Aktivasi';
     btn.disabled = false;
@@ -689,6 +654,7 @@ function updateSI(){
 function scCount(){return Math.max(1,Math.ceil(vDur/vScene));}
 function purposes(n){
   if(vStyle==='Edukasi'){
+    // Edukasi: no CTA, scene terakhir = Key Takeaway
     if(n===1) return['Hook + Key Takeaway'];
     if(n===2) return['Hook','Key Takeaway'];
     const midEdu=['Poin 1','Poin 2','Poin 3','Poin 4'];
@@ -696,17 +662,6 @@ function purposes(n){
     for(let i=0;i<n-2;i++) rEdu.push(midEdu[i%midEdu.length]);
     rEdu.push('Key Takeaway');
     return rEdu;
-  }
-  if(vStyle==='Factory Crisis'){
-    // Scene priority: Factory Validation always first, CTA always last
-    // Middle scenes added in priority order as duration allows
-    const fcMid=['Crisis Hook','Internal Pressure','QC Pass','Clearance Logic'];
-    if(n===1) return['Factory Validation + Crisis + CTA'];
-    if(n===2) return['Factory Validation + Crisis Hook','CTA Loop'];
-    const fcR=['Factory Validation'];
-    for(let i=0;i<n-2;i++) fcR.push(fcMid[i%fcMid.length]);
-    fcR.push('CTA Loop');
-    return fcR;
   }
   if(n===1)return['Hook + CTA'];
   if(n===2)return['Hook','CTA'];
@@ -720,7 +675,7 @@ function loadingHTML(s){return`<div style="display:flex;flex-direction:column;ga
 function startCycle(arr){let i=0;return setInterval(()=>{i=(i+1)%arr.length;const el=document.getElementById('stxt');if(el)el.textContent=arr[i];},1900);}
 
 // ── VIDEO GENERATE ──
-function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi,ctaStyleKey,fcRegion,fcCrisis){
+function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi,ctaStyleKey){
   const sc=scOverride||scCount(), ps=psOverride||purposes(sc), lang=LANG[country];
   // CTA per platform × per country
   const CTA_MATRIX={
@@ -896,55 +851,6 @@ Never use: "Produk ini bukan obat." as a standalone sentence. Always fuse it wit
 
 `:'';
 
-  const fcBlock=fcRegion?`
-=========================================================
-FACTORY CRISIS MODE — MANDATORY RULES (OVERRIDES ALL OTHER VISUAL STYLE)
-=========================================================
-This is NOT a commercial, NOT a UGC video, NOT cinematic content.
-This video must look and feel like LEAKED INTERNAL FACTORY FOOTAGE — raw, urgent, real.
-
-FACTORY CONTEXT:
-- Factory Region: \${fcRegion}
-- Crisis Type: \${fcCrisis}
-
-VISUAL DNA — EVERY SCENE MUST FOLLOW THESE RULES:
-1. POV: Human eye level — handheld, slightly unstable, natural micro-shake. NOT a tripod shot.
-2. Environment: Active factory floor / production warehouse. Machines ON. Conveyor belt MOVING.
-3. Workers: Present and actively working — numbers and appearance consistent with \${fcRegion} region.
-4. Product placement: On conveyor belt, horizontal, surrounded by other units (not isolated, not hero shot).
-5. Lighting: Industrial — fluorescent overhead, natural factory light. NOT cinematic, NOT studio lit.
-6. Color grade: Slightly desaturated, realistic — NOT color graded, NOT warm/cool filter.
-7. No talent facing camera. No performance. No acting. Workers are background — busy, not looking at lens.
-8. STRICTLY BANNED from ALL scenes: HP/phone visible, camera visible, UI overlays, text on screen, logo watermarks, cinematic depth-of-field bokeh, beauty lighting, product isolated on white/clean background.
-
-CRISIS TYPE VISUAL CUES for "\${fcCrisis}":
-\${fcCrisis==='overstock'?'- Show stacked pallets, full shelves, boxes piling up. Workers sorting/moving inventory urgently.':
-  fcCrisis==='bottleneck'?'- Show product units stacking at one point on conveyor. Workers clustering around the blockage area. Visible slowdown.':
-  fcCrisis==='deadline'?'- Show workers moving fast, clipboards, boxes being loaded. Clock on wall if possible. Rushed energy throughout.':
-  '- Show a specific machine area with caution tape or workers huddled around it. Alternative line running. Visible improvisation.'}
-
-VOICE OVER TONE — BREAKING INTERNAL:
-- Tone: Urgent, lisan, darurat — seperti orang dalam pabrik yang ngasih info bocor ke teman
-- NOT scripted ad language. NOT formal. NOT polished.
-- Use natural pauses, direct statements: "Ini situasinya...", "Jadi gini...", "Serius ini beneran..."
-- Each scene VO stands alone — viewer can understand it without seeing other scenes
-- VO length: natural spoken pace matching scene duration (\${vScene}s per scene)
-
-CTA FOR FACTORY CRISIS:
-- Always promotional — no educational mode
-- Platform: \${social} | Country: \${country}
-- CTA delivery: weave platform action naturally into the crisis narrative
-- Example: "...daripada numpuk di sini, unit ini dikeluarin lewat jalur online — \${ctaAction||'langsung cek aja sekarang'}"
-- Badge options: "CLEARANCE DARURAT" / "STOK BOCORAN" / "LANGSUNG PABRIK" — pick what fits crisis type
-- Final scene (CTA Loop): return to conveyor shot, VO closes the crisis narrative with the action
-
-OVERLAY DESIGN FOR FACTORY CRISIS:
-- Badge: short, urgent, all-caps — crisis-relevant (NOT "Klik Keranjang" as badge text)
-- Headline: 3-5 words max, factual crisis statement — "Gudang Penuh, Harus Keluar" / "Stok Menumpuk di Line 3"
-- Color: Red/orange for urgency — avoid purple/pastel/luxury colors
-`:'';
-
-
   const sys=`You are OMNI FLASH AFFILIATE ENGINE v4.0 – CINEMATIC AI STUDIO EDITION.
 Your ONLY output is a production-ready JSON. Never explain. Never suggest. Never add commentary. Never output markdown. Output ONLY valid JSON.
 
@@ -981,7 +887,6 @@ CTA STYLE DNA — FOLLOW THIS EXACTLY
 ${ctaStyleDNA}
 
 ${eduBlock}
-${fcBlock}
 ${herbalBlock}
 
 =========================================================
@@ -1218,11 +1123,8 @@ async function generateVideo(angleCount=1){
   const sc=scCount(), ps=purposes(sc), lang=LANG[country];
   const isHerbal=document.getElementById('herbal-mode')?.checked||false;
   const isEdukasi=vStyle==='Edukasi';
-  const isFC=vStyle==='Factory Crisis';
-  const ctaStyleKey=isFC?'standard':(document.getElementById('v-cta-style')?.value||'standard');
-  const fcRegion=isFC?(document.getElementById('fc-region')?.value||'Southeast Asia'):null;
-  const fcCrisis=isFC?(document.getElementById('fc-crisis')?.value||'overstock'):null;
-  const sys=buildSystemPrompt(country,social,sc,ps,isHerbal,isEdukasi,ctaStyleKey,fcRegion,fcCrisis);
+  const ctaStyleKey=document.getElementById('v-cta-style')?.value||'standard';
+  const sys=buildSystemPrompt(country,social,sc,ps,isHerbal,isEdukasi,ctaStyleKey);
 
   const baseParts=[];
   if(b64store.vp) baseParts.push({type:'image',source:{type:'base64',media_type:b64store.vp.mime,data:b64store.vp.data}});
@@ -1251,10 +1153,7 @@ MARKETING ANGLE — pick ONE, never repeat
 =========================================================
 Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison, Pattern Interrupt, POV, Story, Discovery, Expectation vs Reality, Before After, Emotional, Secret, Question, Shocking Fact, Common Habit, Daily Routine, Smart Trick, Myth, Expert Tip, One Thing Nobody Tells You, Invisible Problem, Unexpected Use`, angleInstruction);
     const eduTopic=document.getElementById('edu-topic')?.value.trim()||'';
-    const fcDetailsLine=isFC?`\nFactory Region: ${fcRegion}\nCrisis Type: ${fcCrisis}`:'';
-    const talentLine=isFC?'':`\nTalent: ${talent||'auto'}`;
-    const angleLine=isFC?'Factory Crisis Narrative':(requestedAngles[ai]||'auto');
-    const parts=[...baseParts,{type:'text',text:`Product: ${name||'(no specific product)'}\nDesc: ${desc||'see image if provided'}${talentLine}\nCountry: ${country}\nStyle: ${vStyle}${eduTopic?'\nEdu Topic: '+eduTopic:''}${fcDetailsLine}\n${sc} scenes @ ${vScene}s | Purposes: ${ps.join(', ')}\nAngle: ${angleLine}\nGenerate complete JSON.`}];
+    const parts=[...baseParts,{type:'text',text:`Product: ${name||'(no specific product)'}\nDesc: ${desc||'see image if provided'}\nTalent: ${talent||'auto'}\nCountry: ${country}\nStyle: ${vStyle}${eduTopic?'\nEdu Topic: '+eduTopic:''}\n${sc} scenes @ ${vScene}s | Purposes: ${ps.join(', ')}\nAngle: ${requestedAngles[ai]||'auto'}\nGenerate complete JSON.`}];
     // Each angle fetch is isolated — if it fails, return an error result instead of throwing,
     // so one failed angle never breaks the other angles in Promise.all
     try{
@@ -1275,10 +1174,22 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
   }
 
   try{
-    // Run all angle fetches IN PARALLEL — each is isolated via try/catch above,
-    // so Promise.all here is now safe (no single failure cancels the rest)
-    const promises=Array.from({length:angleCount},(_,ai)=>fetchAngle(ai));
-    const results=await Promise.all(promises);
+    // Run angle fetches SEQUENTIALLY with delay to avoid Gemini 10 RPM rate limit
+    const results=[];
+    for(let ai=0;ai<angleCount;ai++){
+      if(ai>0){
+        const waitSec=7;
+        const el=document.getElementById('stxt');
+        for(let w=waitSec;w>0;w--){
+          if(el) el.textContent=`Angle ${ai+1}/${angleCount} — menunggu ${w}s (rate limit)...`;
+          await new Promise(ok=>setTimeout(ok,1000));
+        }
+      }
+      const el2=document.getElementById('stxt');
+      if(el2) el2.textContent=`Generating angle ${ai+1} dari ${angleCount}...`;
+      const result=await fetchAngle(ai);
+      results.push(result);
+    }
     clearInterval(timer);
     renderVideoResults(results,name,sc);
   }catch(err){clearInterval(timer);vout.innerHTML=errBox(err.message);}
@@ -1560,11 +1471,8 @@ MARKETING ANGLE — LOCKED FOR THIS REQUEST
 You MUST use the "${retryAngle}" angle. Do not use any other angle. Do not rotate.`;
     const isHerbal=document.getElementById('herbal-mode')?.checked||false;
     const isEdukasi=vStyle==='Edukasi';
-    const isFCr=vStyle==='Factory Crisis';
-    const ctaStyleKey=isFCr?'standard':(document.getElementById('v-cta-style')?.value||'standard');
-    const fcRegionR=isFCr?(document.getElementById('fc-region')?.value||'Southeast Asia'):null;
-    const fcCrisisR=isFCr?(document.getElementById('fc-crisis')?.value||'overstock'):null;
-    const sys=buildSystemPrompt(country,social,retrySc,ps,isHerbal,isEdukasi,ctaStyleKey,fcRegionR,fcCrisisR);
+    const ctaStyleKey=document.getElementById('v-cta-style')?.value||'standard';
+    const sys=buildSystemPrompt(country,social,retrySc,ps,isHerbal,isEdukasi,ctaStyleKey);
     const sysFinal=sys.replace(`=========================================================
 MARKETING ANGLE — pick ONE, never repeat
 =========================================================
