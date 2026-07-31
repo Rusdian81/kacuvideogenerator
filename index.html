@@ -637,14 +637,18 @@ async function submitLicense(){
   btn.textContent = 'Memvalidasi...';
 
   try{
-    const res = await fetch('/api/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key })
-    });
-    const data = await res.json();
+    // Hash key pakai SHA-256, bandingkan dengan hash yang tersimpan
+    const msgBuf = new TextEncoder().encode(key);
+    const hashBuf = await crypto.subtle.digest('SHA-256', msgBuf);
+    const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 
-    if(data.valid){
+    const VALID_HASHES = [
+      'f7cd984ec8cfd898f281c7e9f2f164e1d72a675bde056b33aeecc1de5c3d8cd1',
+      'e917593128913ca13866ee8b3f86052c7ca79437d7b826f4705c982f8e4ec0f6',
+      '56386177441e022e2df9b276bf3422b682a31e8f693a59bc51059ee7cad051ad',
+    ];
+
+    if(VALID_HASHES.includes(hashHex)){
       localStorage.setItem('omniflash_license', 'valid');
       document.getElementById('license-gate').classList.add('hidden');
       btn.textContent = 'Aktivasi';
@@ -657,7 +661,7 @@ async function submitLicense(){
       btn.disabled = false;
     }
   }catch(err){
-    errEl.textContent = 'Gagal terhubung ke server validasi. Coba lagi.';
+    errEl.textContent = 'Gagal memvalidasi key. Coba lagi.';
     errEl.classList.add('visible');
     btn.textContent = 'Aktivasi';
     btn.disabled = false;
