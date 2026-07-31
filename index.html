@@ -406,7 +406,7 @@ function buildGeminiBody(system, parts){
   }).filter(Boolean);
   if(system) gParts.unshift({text:'SYSTEM INSTRUCTIONS:\n'+system+'\n\n---\n'});
   contents.push({role:'user',parts:gParts});
-  return{contents,generationConfig:{maxOutputTokens:8192,temperature:0.9}};
+  return{contents,generationConfig:{maxOutputTokens:8192}};
 }
 
 // Extract text from Gemini response
