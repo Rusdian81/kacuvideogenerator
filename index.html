@@ -357,7 +357,7 @@ function extractJSON(raw){
 }
 
 function repairJSON(s){
-  if(!s) return '{}';
+  if(!s) return ''; // genuinely empty — do NOT fake a valid '{}', let it fail parsing so the error path shows properly
   // Count open/close braces and brackets, add missing closers
   let braces=0, brackets=0;
   let inStr=false, escape=false;
@@ -412,6 +412,16 @@ async function geminiWithRetry(key, body, maxRetries=2){
           }
           throw new Error('Gemini API Error: '+data.error.message+'\n\nStatus: '+data.error.status);
         }
+        // Diagnose empty/blocked responses BEFORE treating as success — this prevents
+        // silently returning a response with no usable text (which used to render as "{}")
+        const diag=diagnoseGeminiResponse(data);
+        if(diag){
+          lastErr=diag;
+          const el=document.getElementById('stxt');
+          if(el) el.textContent=`${model}: ${diag} — retry ${r+1}/${maxRetries}...`;
+          await new Promise(ok=>setTimeout(ok,2000));
+          continue;
+        }
         if(r>0||m>0){const el=document.getElementById('stxt');if(el) el.textContent=`Berhasil pakai ${model}`+(r>0?' (retry '+(r+1)+')':'');}
         return data;
       }catch(err){
@@ -424,7 +434,27 @@ async function geminiWithRetry(key, body, maxRetries=2){
     const el=document.getElementById('stxt');
     if(el&&m<MODEL_FALLBACKS.length-1) el.textContent=`${model} masih sibuk, coba model lain: ${MODEL_FALLBACKS[m+1]}...`;
   }
-  throw new Error('Semua model Gemini sedang sibuk (dicoba: '+MODEL_FALLBACKS.join(', ')+'). Coba lagi dalam 1-2 menit.\n\nDetail: '+lastErr);
+  throw new Error('Semua model Gemini sedang sibuk atau responsnya kosong (dicoba: '+MODEL_FALLBACKS.join(', ')+'). Coba lagi dalam 1-2 menit.\n\nDetail: '+lastErr);
+}
+
+// Inspect a Gemini response for signs it produced no usable text —
+// blocked by safety filter, empty candidates, or truncated before any text was written.
+// Returns a human-readable reason string if something is wrong, or null if the response looks OK.
+function diagnoseGeminiResponse(data){
+  if(data?.promptFeedback?.blockReason){
+    return 'Diblokir safety filter ('+data.promptFeedback.blockReason+')';
+  }
+  const candidates=data?.candidates;
+  if(!candidates||candidates.length===0){
+    return 'Response kosong (tidak ada candidates)';
+  }
+  const cand=candidates[0];
+  const text=(cand?.content?.parts||[]).map(p=>p.text||'').join('');
+  if(!text||text.trim()===''){
+    const reason=cand?.finishReason||'UNKNOWN';
+    return 'Output kosong (finishReason: '+reason+')';
+  }
+  return null;
 }
 
 // Build Gemini request body from system prompt + parts (text + optional images)
@@ -438,7 +468,7 @@ function buildGeminiBody(system, parts){
   }).filter(Boolean);
   if(system) gParts.unshift({text:'SYSTEM INSTRUCTIONS:\n'+system+'\n\n---\n'});
   contents.push({role:'user',parts:gParts});
-  return{contents,generationConfig:{maxOutputTokens:8192,temperature:0.9}};
+  return{contents,generationConfig:{maxOutputTokens:16384,temperature:0.9,thinkingConfig:{thinkingBudget:0}}};
 }
 
 // Extract text from Gemini response
@@ -1377,6 +1407,35 @@ PRODUCT ANALYSIS — auto-detect from image/description
 =========================================================
 Detect and fill: product_name, category, function, features, target_audience, pain_points, customer_desire, buying_trigger, premium_selling_point, hidden_selling_point, visual_strength, demonstration_possibility, environment_recommendation, emotional_trigger.
 
+Every field must contain a CONCRETE, SPECIFIC observation — not a generic category description. These fields are the raw material the VO scripts will pull from later, so vague answers here directly cause generic-sounding VO.
+- WEAK: premium_selling_point: "kualitas bagus" — TOO VAGUE, not usable in VO
+- STRONG: premium_selling_point: "botol kaca amber yang melindungi kandungan dari sinar UV, beda dari kompetitor yang pakai plastik bening"
+- WEAK: hidden_selling_point: "praktis" — TOO VAGUE
+- STRONG: hidden_selling_point: "ukurannya travel-size jadi muat di tas kecil, banyak produk sejenis ukurannya kebesaran"
+Look closely at the actual image/description provided — texture, color, packaging, size, visible ingredients, form factor — and extract what is ACTUALLY true and specific about this exact product.
+
+=========================================================
+PRODUCT VISUAL FIDELITY — MANDATORY, HIGH PRIORITY
+=========================================================
+⚠️ This is a compliance-critical rule. If the generated video doesn't match the actual product photo, this can be flagged as misleading advertising / product misrepresentation by ad platforms — a real risk to the seller's account. Follow this section precisely.
+
+If a product image was provided, you MUST extract an EXACT visual description of the real physical product — not a generic or idealized version of "a product like this." Fill this into product_analysis.exact_visual_description using only what you can actually observe in the image:
+- Exact color(s) — be precise, not generic (e.g. "matte forest green with rose-gold cap" not just "green bottle")
+- Exact shape and form factor (bottle/tube/jar/box shape, proportions, cap style, closure type)
+- Exact packaging material appearance (glass, matte plastic, glossy plastic, cardboard, foil, etc)
+- Any visible text, logo, or label design elements — describe their position and style if legible (do not invent text you cannot actually read)
+- Size/scale impression relative to hands or context if visible
+- Any distinguishing visual feature that makes this specific product recognizable (unique cap shape, embossed pattern, distinctive color combo, etc)
+
+If NO product image was provided (topic-only / description-only generation), state exact_visual_description as "No reference image provided — using description only" and rely on the text description given.
+
+CONSISTENCY MANDATE ACROSS ALL SCENES:
+- EVERY scene's visual_prompt.subject MUST describe the product using the SAME exact_visual_description established above — copy the same color, shape, and distinguishing details into every scene, not a fresh/different interpretation each time
+- Do NOT invent new colors, shapes, or packaging details not present in the original reference — the product must look like the literal same physical object in every single scene, not a different item in the same category
+- Do NOT "improve" or "idealize" the product's appearance beyond what's actually in the reference — no upgrading a plain label to a fancy one, no changing a matte finish to glossy, etc
+- If the product image shows any wear, imperfection, or specific real-world detail, it's fine to smooth minor lighting but NEVER change the core identity (color/shape/branding) of the product
+- When writing each scene's visual_prompt.subject, explicitly restate the key visual identifiers (e.g. "the matte forest green bottle with rose-gold cap, exactly as shown, ...") so downstream image/video generators stay anchored to the real product across every single clip
+
 =========================================================
 MARKETING ANGLE — pick ONE, never repeat
 =========================================================
@@ -1440,6 +1499,29 @@ ${purposeAdjustmentBlock}
 
 ${voiceCharacterBlock}
 
+SPECIFICITY MANDATE — THIS IS WHY VO SOUNDS GENERIC IF SKIPPED:
+Every scene's voice_over_script MUST reference at least ONE concrete, specific detail about THIS product — not a generic feeling that could apply to any product in any category. Pull the specific detail from what you detected in product_analysis (premium_selling_point, hidden_selling_point, pain_points, visual_strength, function, features) or directly from the product image/description provided.
+- A concrete detail is something only true of THIS product: a texture, an ingredient, a specific use-case, a specific physical feature, a specific problem it solves, how it looks/feels/smells/works
+- A generic filler is a feeling-only sentence with zero product-specific information — it could be copy-pasted onto a completely different product and still make sense
+- BEFORE finalizing each scene, ask: "if I swapped this VO onto a totally different product, would it still make sense?" If YES, it's too generic — rewrite it with an actual detail from this product.
+
+BANNED GENERIC FILLER (these are content-empty regardless of how natural they sound — do not use them as the ENTIRE scene content, only as a connector alongside a real detail):
+- "ini rahasia kecil yang baru gue nemu" (says nothing about the product)
+- "worth banget buat dicoba" (says nothing specific)
+- "gue nggak nyangka bakal secocok ini" (no concrete reason given)
+- "ini yang bikin gue balik lagi beli" (no reason stated)
+- "hasilnya beda banget" (different how? be specific)
+- "he found something amazing" (amazing how?)
+- Any sentence that only expresses excitement/surprise WITHOUT stating what specifically caused it
+
+GOOD vs GENERIC comparison:
+- GENERIC: "Ini rahasia kecil yang baru gue nemu dan worth banget buat dicoba"
+- SPECIFIC: "Teksturnya gel tapi begitu kena kulit langsung jadi kayak minyak — itu yang bikin gue kaget pertama kali"
+- GENERIC: "Hasilnya beda banget dari yang lain"
+- SPECIFIC: "Bau pandan-nya beneran authentic, bukan yang artificial kayak produk lain yang pernah gue coba"
+
+If product_analysis detected specific features/ingredients/mechanisms, USE THEM BY NAME in at least one scene. If the product image shows a distinctive visual trait (color, shape, packaging detail), reference it concretely instead of describing it vaguely.
+
 CRITICAL LANGUAGE RULES FOR EACH SCENE:
 - Use incomplete sentences, trailing off naturally: "...dan itu yang bikin gue..."
 - Use filler words naturally: "literally", "honestly", "serius deh", "kayaknya", "nggak nyangka"
@@ -1463,6 +1545,8 @@ ANTI-REPETITION RULES (critical for natural VO):
 - Natural speech has rhythm variation — mix declarative, question, and exclamatory tones across scenes
 
 ${richExamplesBlock}
+
+⚠️ IMPORTANT — HOW TO USE THE EXAMPLES ABOVE: These examples show RHYTHM, PACING, and TONE only — they are intentionally generic because they have no specific product attached. Do NOT reuse their exact phrasing in your output. Take the sentence structure/energy and rebuild it around a real, specific detail of THIS product per the SPECIFICITY MANDATE above.
 
 =========================================================
 SOUND DESIGN RULES
@@ -1506,7 +1590,7 @@ OUTPUT STRUCTURE — return EXACTLY this JSON shape
     "social_platform": "${social}",
     "video_generators": ["${vPlatforms.join('","')}"]
   },
-  "product_analysis": { "product_name":"","category":"","function":"","target_audience":"","pain_points":[],"buying_trigger":"","premium_selling_point":"","emotional_trigger":"" },
+  "product_analysis": { "product_name":"","category":"","function":"","target_audience":"","pain_points":[],"buying_trigger":"","premium_selling_point":"","emotional_trigger":"","exact_visual_description":"" },
   "marketing_angle": { "name":"","hook_type":"","core_message":"" },
   "thumbnail": { "headline":"MAX 4 WORDS","sub_headline":"MAX 5 WORDS","emotion":"","lighting":"Premium Commercial","product_size":"40%" },
   "scenes": [
@@ -1526,7 +1610,7 @@ Each scene object — STANDALONE, complete, copy-pasteable to video generator:
   "purpose": "Hook",
   "voice_over_script": "VO line for THIS scene — word count follows the dynamic range + purpose adjustment from VOICE OVER RULES above, NOT a fixed number",
   "camera": { "movement": "", "lens": "", "speed": "" },
-  "visual_prompt": { "environment": "Ultra realistic", "subject": "Extremely detailed", "composition": "Commercial Composition", "lighting": "Premium cinematic", "camera_motion": "Dynamic", "depth_of_field": "Realistic", "quality": "Ultra realistic 8K", "aspect_ratio": "9:16" },
+  "visual_prompt": { "environment": "Ultra realistic", "subject": "MUST restate the exact_visual_description details (color/shape/packaging) established in product_analysis — the same physical product, not a generic reinterpretation", "composition": "Commercial Composition", "lighting": "Premium cinematic", "camera_motion": "Dynamic", "depth_of_field": "Realistic", "quality": "Ultra realistic 8K", "aspect_ratio": "9:16" },
   "motion_prompt": { "camera": "", "subject_motion": "", "background_motion": "", "transition": "" },
   "overlay_design": {
     "badge": { "text": "", "background": "Auto", "text_color": "Auto" },
@@ -1539,7 +1623,7 @@ Each scene object — STANDALONE, complete, copy-pasteable to video generator:
     "position": "Center"
   },
   "caption": "MAX 3 WORDS",
-  "negative_prompt": "static shots, talking head to camera, cinematic lens flare, overexposed, dark footage, blurry motion, slow motion beauty shot, repetitive VO phrases, duplicate words, filler word repetition, unnatural stiff movement, robotic motion, jarring cuts, jump cuts without transition, overcrowded text overlay, unreadable text, color grading artifacts, fake CGI, stock footage look, overly staged, commercial look, advertisement feel"
+  "negative_prompt": "static shots, talking head to camera, cinematic lens flare, overexposed, dark footage, blurry motion, slow motion beauty shot, repetitive VO phrases, duplicate words, filler word repetition, unnatural stiff movement, robotic motion, jarring cuts, jump cuts without transition, overcrowded text overlay, unreadable text, color grading artifacts, fake CGI, stock footage look, overly staged, commercial look, advertisement feel, different product than reference, mismatched packaging color, altered label design, wrong bottle/container shape, generic product substitute, inconsistent product appearance between scenes"
 }`;
   return sys;
 }
