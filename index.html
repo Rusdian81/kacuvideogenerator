@@ -1222,10 +1222,16 @@ VISUAL RULES:
 
 HOOK-THEN-SILENT CAPTION RULE (critical — follow exactly):
 - Scene 1 ONLY: overlay_design.headline.text and overlay_design.keyword.text (or a short 1-2 line hook) carry a scroll-stopping, punchy hook line (max ~6-8 words total across the two lines), styled as a bold text box over the product — this is the ONLY scene in the whole video allowed to show any on-screen text
+- The hook's on-screen duration follows the normal scene 1 timing already set elsewhere (duration_range for scene 1) — do NOT shorten or extend it, do NOT make the hook text disappear mid-scene-1; it stays visible for the full scene 1 duration exactly like every other style, only scenes 2+ go silent
 - EVERY scene from scene 2 to the final scene MUST have overlay_design.badge.text = "", overlay_design.headline.text = "", overlay_design.keyword.text = "", caption = "" — completely empty, no overlay graphic rendered at all. Do not invent captions for these scenes under any circumstance, even if other rules elsewhere say every scene needs a headline/caption — this style explicitly overrides that.
 - The hook text disappearing after scene 1 is intentional: it makes the clip feel native/organic instead of an ad, and lets the raw product footage carry the rest of the video
 
-VOICE OVER: optional and minimal — if used, it should sound like a casual real-person voiceover/caption-read, not a sales pitch. It's fine for voice_over_script to be very short or even just ambient/ no dialogue for scenes 2+, since the visual (product rotating in hand) carries the content.
+HOOK LANGUAGE — casual Gen-Z Indonesian slang (bahasa gaul kekinian), NOT formal ad copywriting:
+- Write the scene 1 hook like a real person texting/captioning their own FYP video, not like a marketing headline — use current casual slang naturally: words/patterns like "literally", "gila sih", "kok bisa", "nggak nyangka", "worth it banget", "auto", "spill", "real talk", "ini sih red flag kalo gatau", "jangan sampe nyesel", "udah pada tau belom", etc. (pick what fits the product, don't force all of them)
+- Keep it short and punchy (max ~6-8 words total) exactly like the rule above — slang tone, not longer
+- Avoid stiff/corporate phrasing ("dapatkan sekarang", "produk terbaik") — it should read like an organic caption a real user would type, not copywriting
+
+VOICE OVER: NONE. This style has no voice_over_script at all — set voice_over_script to "" (empty string) for every single scene including scene 1. The video is silent/no narration; only the scene 1 hook text and ambient ASMR-style product sound (handling, soft background ambience) carry it — no spoken dialogue or narration in any scene.
 
 OVERLAY: Scene 1 = one bold, high-contrast hook text box (tan/beige or dark glass panel background, white bold serif or sans text, centered over the product). All other scenes = NO overlay elements whatsoever.
 `,
@@ -1618,10 +1624,11 @@ Use in sequence: Motion Blur → Whip Pan → Speed Ramp → Zoom Punch → Flas
 =========================================================
 VOICE OVER RULES — CRITICAL — DYNAMIC WORD COUNT PER SCENE
 =========================================================
+${vStyle==='POV Goyang Produk'?`⚠️ OVERRIDE FOR THIS STYLE: "POV Goyang Produk" has NO voice over at all. Ignore every word-count/budget/purpose-adjustment rule below entirely — set voice_over_script to "" (empty string) for EVERY scene, including scene 1. The video is silent except ambient product-handling sound; only the scene 1 hook text carries any message. Do not write any spoken script for any scene in this style.`:`
 Language: ${lang}
 Tone: ${toneLine}
 
-IMPORTANT: Generate the VO script directly inside EACH scene object as "voice_over_script" — not as a separate combined script.
+IMPORTANT: Generate the VO script directly inside EACH scene object as "voice_over_script" — not as a separate combined script.`}
 
 WORD COUNT IS DYNAMIC — calculated from THIS scene's duration (${vScene}s) AND its purpose. Natural conversational speech runs ~2.2–2.8 words/second in ${lang}. Use this base range for ${vScene}s scenes, then adjust by purpose:
 
@@ -1750,7 +1757,7 @@ Each scene object — STANDALONE, complete, copy-pasteable to video generator:
   "scene": 1,
   "duration_range": "0-${vScene}s",
   "purpose": "Hook",
-  "voice_over_script": "VO line for THIS scene — word count follows the dynamic range + purpose adjustment from VOICE OVER RULES above, NOT a fixed number",
+  "voice_over_script": "VO line for THIS scene — word count follows the dynamic range + purpose adjustment from VOICE OVER RULES above, NOT a fixed number. If active style is POV Goyang Produk, this is always \\"\\" (empty) for every scene.",
   "camera": { "movement": "", "lens": "", "speed": "" },
   "visual_prompt": { "environment": "Ultra realistic", "subject": "MUST restate the exact_visual_description details (color/shape/packaging) established in product_analysis — the same physical product, not a generic reinterpretation", "composition": "Commercial Composition", "lighting": "Premium cinematic", "camera_motion": "Dynamic", "depth_of_field": "Realistic", "quality": "Ultra realistic 8K", "aspect_ratio": "9:16" },
   "motion_prompt": { "camera": "", "subject_motion": "", "background_motion": "", "transition": "" },
