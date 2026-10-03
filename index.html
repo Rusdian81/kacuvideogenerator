@@ -267,6 +267,17 @@ select option{background:#1a1a26;}
       </div>
     </div>
     <div>
+      <div class="slabel">Hook Scene 1</div>
+      <div class="pill-group" id="v-hookmode">
+        <div class="pill active" data-val="auto">&#129302; Auto (AI Generate)</div>
+        <div class="pill" data-val="manual">&#9999;&#65039; Manual (Tulis Sendiri)</div>
+      </div>
+      <div class="field" id="hook-manual-field" style="display:none;margin-top:7px;">
+        <label>Teks hook buat scene 1 <span style="color:var(--muted);font-size:11px;">(dipakai persis, nggak di-reword AI)</span></label>
+        <textarea id="hook-manual-text" placeholder="cth: Literally kapan lagi dapet harga segini?!"></textarea>
+      </div>
+    </div>
+    <div>
       <div class="slabel">Durasi Video</div>
       <div class="pill-group" id="v-dur">
         <div class="pill dur" data-val="10">10s</div>
@@ -743,6 +754,12 @@ makePills('v-style',v=>{
   // Edukasi: sembunyikan platform sosial (tidak ada CTA = tidak perlu platform)
   // Tapi tetap tampilkan untuk keperluan bahasa
 });
+let hookMode='auto';
+makePills('v-hookmode',v=>{
+  hookMode=v;
+  const f=document.getElementById('hook-manual-field');
+  if(f) f.style.display = (v==='manual') ? '' : 'none';
+});
 makePills('v-dur',v=>{vDur=parseInt(v);updateSI();});
 
 // ── License gate ──
@@ -877,6 +894,17 @@ function startCycle(arr){let i=0;return setInterval(()=>{i=(i+1)%arr.length;cons
 // ── VIDEO GENERATE ──
 function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi,ctaStyleKey,isFactoryCrisis,crisisType,isAnomaly,anomalyEnemy){
   const sc=scOverride||scCount(), ps=psOverride||purposes(sc), lang=LANG[country];
+  const hookManualText = (hookMode==='manual') ? (document.getElementById('hook-manual-text')?.value||'').trim() : '';
+  const manualHookBlock = hookManualText ? `
+=========================================================
+MANUAL HOOK OVERRIDE — scene 1 on-screen text is PROVIDED, do NOT write your own
+=========================================================
+The user supplied this EXACT hook text to use for scene 1's on-screen text: "${hookManualText}"
+- Use this text VERBATIM — do not reword, translate, improve, shorten, or regenerate it, even if it conflicts with word-count/style guidance elsewhere (hook-language rules, MAX 4 WORDS headline limit, etc all yield to this exact text)
+- Place it as scene 1's overlay_design.headline.text / overlay_design.keyword.text (split across the two naturally if it's long, e.g. first line in headline, rest in keyword — or put it all in headline.text if it fits as one line). Scene 1's "caption" field can stay empty or a short 1-2 word visual tag, since the main hook message is already this manual text.
+- This override applies regardless of which Gaya Konten style is active — including POV Goyang Produk's "all scenes after 1 are silent/empty" rule, which still applies normally to scenes 2+.
+- Everything else (VO, product analysis, marketing angle, visuals) is still auto-generated as normal — ONLY the scene 1 on-screen hook text is fixed to what's given here.
+` : '';
   // CTA per platform × per country
   const CTA_MATRIX={
     'TikTok':{
@@ -1214,11 +1242,17 @@ POV GOYANG PRODUK STYLE — ADDITIVE VISUAL GUIDANCE (OVERRIDES overlay/editing 
 This style mimics a raw, unedited, real-person POV clip: a hand casually holding and slowly turning/tilting the product in front of camera, one continuous-feeling handheld shot, like someone just filmed it in 10 seconds to show what they received. It must NOT look like a polished ad.
 
 VISUAL RULES:
-- Only a hand + the product fill the frame, held up at roughly chest/face height against a plain ordinary background (patterned fabric, bedsheet, wall, desk — nothing staged)
+- Only a hand + the product fill the frame, held up at roughly chest/face height — nothing staged, always looks like one ordinary person just filming on the spot
 - Motion is minimal and natural: a slow, slight rotation/tilt/shake of the wrist so different sides and angles of the product packaging become visible — NOT a demo, NOT applying/using the product, just showing it off
-- Camera is handheld POV, static framing, tiny natural shake — no push-ins, no whip pans, no speed ramps, no cuts between scenes (describe every scene's camera.movement as "static handheld, slight natural wrist rotation")
-- No talent face, no second location, no props beyond the product itself
-- Lighting: whatever ambient indoor light is available — ring light or window light, nothing dramatic or cinematic
+- Camera is handheld POV, static-ish framing, tiny natural shake — no push-ins, no whip pans, no speed ramps, no dramatic cuts (describe every scene's camera.movement as "static handheld, slight natural wrist rotation")
+- No talent face, no props beyond the product itself
+
+LOCATION VARIETY (so it doesn't feel flat/monotone):
+- Vary the background across scenes instead of keeping one static spot — move through 2-3 different ordinary everyday spots that feel like the SAME person casually walking around their own home/day while filming, e.g. bedroom (bedsheet/pillow in frame) → bathroom counter → living room couch/sofa, or car seat → desk → balcony — pick a sequence that fits the product's natural use-context
+- Each location change should feel like a natural continuation (as if the hand/product never stopped being filmed while the person walked from one spot to another), NOT a jump-cut to an unrelated scene — keep the same lighting mood/time-of-day across all scenes so it still reads as one continuous take
+- It's fine to also vary indoor/outdoor (e.g. bedroom → balcony → yard) if that fits the product, following the general LOCATION/BACKGROUND RULE below — just avoid using the exact same single backdrop for every scene
+- Don't overdo the variety — 1 location change per 2-3 scenes is enough; this is still meant to look raw and unplanned, not like a location-hopping montage
+- Lighting: whatever ambient indoor/outdoor light is naturally available at each spot — ring light or window light, nothing dramatic or cinematic
 
 HOOK-THEN-SILENT CAPTION RULE (critical — follow exactly):
 - Scene 1 ONLY: overlay_design.headline.text and overlay_design.keyword.text (or a short 1-2 line hook) carry a scroll-stopping, punchy hook line (max ~6-8 words total across the two lines), styled as a bold text box over the product — this is the ONLY scene in the whole video allowed to show any on-screen text
@@ -1540,6 +1574,7 @@ ${herbalBlock}
 ${factoryCrisisBlock}
 ${anomalyBlock}
 ${styleVariantBlock}
+${manualHookBlock}
 
 =========================================================
 LOCATION / BACKGROUND RULE — auto-decide, indoor AND outdoor both allowed
@@ -1547,7 +1582,7 @@ LOCATION / BACKGROUND RULE — auto-decide, indoor AND outdoor both allowed
 There is no fixed location input from the user — you must pick the setting yourself based on the product and how it's realistically used, choosing freely between INDOOR (bedroom, bathroom, kitchen, living room, home office, cafe, car interior) and OUTDOOR (balcony, garden/yard, street, park, parking lot, poolside, rooftop) — whichever fits the product's real-world use-context best.
 - Base the choice on demonstration_possibility and environment_recommendation from product_analysis below: e.g. skincare/haircare → bathroom/bedroom vanity (indoor); car-care products → driveway/parking lot (outdoor); food/drink → kitchen/cafe table (indoor) or picnic/park (outdoor); outdoor gear/sports → park/street/yard (outdoor); cleaning products → kitchen/living room (indoor)
 - If the style's scenes follow a sequence across different purposes (Hook/Reveal/Demo/Benefit/CTA) and nothing in the active style block above restricts this, it's fine for the location to shift between 1-2 complementary settings across the video (e.g. bedroom → bathroom), but do NOT randomly alternate indoor/outdoor without a reason tied to the product's usage story
-- If the active style block above explicitly says to keep ONE single consistent location for the whole video (e.g. POV Goyang Produk), that instruction overrides this section — pick ONE indoor or outdoor setting and keep every scene's visual_prompt.environment consistent with it
+- If the active style block above gives its own specific location-variety guidance (e.g. POV Goyang Produk's "move through 2-3 ordinary spots" rule), follow that instead of this section's general shifting logic
 - Never default to the same generic location for every product — vary it realistically per product category
 
 =========================================================
