@@ -1254,6 +1254,13 @@ LOCATION VARIETY (so it doesn't feel flat/monotone):
 - Don't overdo the variety — 1 location change per 2-3 scenes is enough; this is still meant to look raw and unplanned, not like a location-hopping montage
 - Lighting: whatever ambient indoor/outdoor light is naturally available at each spot — ring light or window light, nothing dramatic or cinematic
 
+${sc<=2?`SHORT VIDEO / FEW SCENES NOTICE (this video has only ${sc} scene${sc>1?'s':''} total, ${vScene}s each) — location variety must happen INSIDE the scene(s), not across them:
+- With this few scenes, "move through 2-3 spots across scenes" above does not apply the normal way — instead, simulate the location change WITHIN a single scene's shot, as part of the SAME continuous handheld take
+- In motion_prompt, explicitly describe this mid-shot transition: e.g. background_motion: "camera/hand walks from bedroom to bathroom mid-clip, background shifts naturally as the person moves", subject_motion: "hand keeps the product in frame the whole time while the person is visibly walking/turning through the space"
+- camera.movement for this scene should read like "static handheld, slight wrist rotation, with a brief natural walk-through from [location A] to [location B] partway through the ${vScene}s"
+- visual_prompt.environment should describe BOTH locations and how they connect (e.g. "starts in a bedroom with patterned bedsheet, transitions to a bathroom counter as the person walks over"), so a single scene still reads as passing through more than one ordinary spot instead of staying static the whole ${vScene}s
+- Keep it to ONE transition max per scene — don't cram 3 locations into one short clip, it'll look rushed/fake`:''}
+
 HOOK-THEN-SILENT CAPTION RULE (critical — follow exactly):
 - Scene 1 ONLY: overlay_design.headline.text and overlay_design.keyword.text (or a short 1-2 line hook) carry a scroll-stopping, punchy hook line (max ~6-8 words total across the two lines), styled as a bold text box over the product — this is the ONLY scene in the whole video allowed to show any on-screen text
 - The hook's on-screen duration follows the normal scene 1 timing already set elsewhere (duration_range for scene 1) — do NOT shorten or extend it, do NOT make the hook text disappear mid-scene-1; it stays visible for the full scene 1 duration exactly like every other style, only scenes 2+ go silent
