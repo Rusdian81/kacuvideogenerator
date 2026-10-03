@@ -963,6 +963,7 @@ function startCycle(arr){let i=0;return setInterval(()=>{i=(i+1)%arr.length;cons
 // ── VIDEO GENERATE ──
 function buildSystemPrompt(country,social,scOverride,psOverride,isHerbal,isEdukasi,ctaStyleKey,isFactoryCrisis,crisisType,isAnomaly,anomalyEnemy){
   const sc=scOverride||scCount(), ps=psOverride||purposes(sc), lang=LANG[country];
+  const voOff = (vStyle==='POV Goyang Produk'||vStyle==='ASMR Unboxing');
   const hookManualText = (hookMode==='manual') ? (document.getElementById('hook-manual-text')?.value||'').trim() : '';
   const manualHookBlock = hookManualText ? `
 =========================================================
@@ -1763,11 +1764,11 @@ Use in sequence: Motion Blur → Whip Pan → Speed Ramp → Zoom Punch → Flas
 =========================================================
 VOICE OVER RULES — CRITICAL — DYNAMIC WORD COUNT PER SCENE
 =========================================================
-${(vStyle==='POV Goyang Produk'||vStyle==='ASMR Unboxing')?`⚠️ OVERRIDE FOR THIS STYLE: "${vStyle}" has NO voice over at all. Ignore every word-count/budget/purpose-adjustment rule below entirely — set voice_over_script to "" (empty string) for EVERY scene, including scene 1. The video is silent except ambient product-handling sound${vStyle==='POV Goyang Produk'?'; only the scene 1 hook text carries any message':' — this style has no on-screen text either, the visuals alone carry the whole video'}. Do not write any spoken script for any scene in this style.`:`
+${voOff ? `⚠️ OVERRIDE FOR THIS STYLE: "${vStyle}" has NO voice over at all anywhere in this video. voice_over_script MUST be "" (empty string) for EVERY single scene, including scene 1 — no exceptions, no matter what any other section of this prompt (CTA rules, marketing angle, herbal safety messaging, manual hook override, word-count budgets, specificity mandate, anti-repetition rules, etc) says about writing VO content. ALL of the word-count/budget/specificity/anti-repetition/banned-phrase rules below in this section do NOT apply — skip them entirely, they assume VO exists and it does not here. The video is silent except ambient product-handling sound${vStyle==='POV Goyang Produk'?'; only the scene 1 hook text carries any message':' — this style has no on-screen text either, the visuals alone carry the whole video'}.` : `
 Language: ${lang}
 Tone: ${toneLine}
 
-IMPORTANT: Generate the VO script directly inside EACH scene object as "voice_over_script" — not as a separate combined script.`}
+IMPORTANT: Generate the VO script directly inside EACH scene object as "voice_over_script" — not as a separate combined script.
 
 WORD COUNT IS DYNAMIC — calculated from THIS scene's duration (${vScene}s) AND its purpose. Natural conversational speech runs ~2.2–2.8 words/second in ${lang}. Use this base range for ${vScene}s scenes, then adjust by purpose:
 
@@ -1835,6 +1836,7 @@ ANTI-REPETITION RULES (critical for natural VO):
 ${richExamplesBlock}
 
 ⚠️ IMPORTANT — HOW TO USE THE EXAMPLES ABOVE: These examples show RHYTHM, PACING, and TONE only — they are intentionally generic because they have no specific product attached. Do NOT reuse their exact phrasing in your output. Take the sentence structure/energy and rebuild it around a real, specific detail of THIS product per the SPECIFICITY MANDATE above.
+`}
 
 =========================================================
 SOUND DESIGN RULES
