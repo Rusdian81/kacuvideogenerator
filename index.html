@@ -175,6 +175,7 @@ select option{background:#1a1a26;}
 <div class="main-tabs">
   <div class="main-tab active" onclick="switchTab('video')">&#9654;&nbsp; Video Prompt</div>
   <div class="main-tab" onclick="switchTab('image')">&#9670;&nbsp; Image Prompt</div>
+  <div class="main-tab" onclick="switchTab('hook')">&#9998;&nbsp; Hook &amp; Caption</div>
 </div>
 <main>
 
@@ -367,13 +368,68 @@ select option{background:#1a1a26;}
   </div>
   <div class="panel-right" id="i-out"><div class="out-ph"><div class="ic">&#9670;</div><p>Upload produk dan isi detail untuk generate image prompt.</p></div></div>
 </div>
+
+<!-- HOOK & CAPTION TAB -->
+<div class="tab-panel" id="tab-hook">
+  <div class="panel-left">
+    <div>
+      <div class="slabel">Upload Produk (opsional)</div>
+      <div class="upload-zone" id="hp-zone">
+        <input type="file" id="hp-file" accept="image/*" onchange="handleUpload(event,'hp')">
+        <div class="upload-icon">&#128247;</div>
+        <div class="upload-lbl" id="hp-lbl"><strong>Klik atau drag</strong> foto produk</div>
+        <img class="upload-preview" id="hp-prev">
+      </div>
+    </div>
+    <div class="field"><label>Nama produk</label><input type="text" id="hc-name" placeholder="cth: Serum Niacinamide 10ml"></div>
+    <div class="field"><label>Deskripsi / keunggulan</label><textarea id="hc-desc" placeholder="Fungsi, masalah yang diselesaikan, harga/promo kalau ada..."></textarea></div>
+    <div class="divider"></div>
+    <div>
+      <div class="slabel">Angle / Mood Hook</div>
+      <div class="pill-group" id="hc-angle">
+        <div class="pill active" data-val="Auto">&#129302; Auto (AI pilih)</div>
+        <div class="pill" data-val="Roasting">Nyindir/Roasting Diri Sendiri</div>
+        <div class="pill" data-val="Curhat">Curhat / Relate</div>
+        <div class="pill" data-val="FOMO">FOMO / Panic</div>
+        <div class="pill" data-val="Retoris">Nanya Retoris</div>
+        <div class="pill" data-val="Kaget">Kaget / Reaksi</div>
+      </div>
+    </div>
+    <div>
+      <div class="slabel">Jumlah Variasi Hook</div>
+      <div class="pill-group" id="hc-count">
+        <div class="pill" data-val="3">3</div>
+        <div class="pill active" data-val="5">5</div>
+        <div class="pill" data-val="10">10</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Contoh hook referensi <span style="color:var(--muted);font-size:11px;">(opsional — tempel 1 atau lebih contoh, satu per baris, AI akan niru gaya bahasa &amp; polanya)</span></label>
+      <textarea id="hc-examples" rows="4" placeholder="cth:
+ciee yg udh terlanjur co
+Padahal hari ini (nama produk)
+Anjloknya kebangetan"></textarea>
+    </div>
+    <div class="divider"></div>
+    <div class="grid-2">
+      <div class="field"><label>Bahasa / Negara</label>
+        <select id="hc-country"><option>Indonesia</option><option>Malaysia</option><option>Singapore</option><option>Thailand</option><option>Philippines</option></select>
+      </div>
+      <div class="field"><label>Platform</label>
+        <select id="hc-platform"><option>TikTok</option><option>Instagram Reels</option><option>YouTube Shorts</option><option>Shopee Video</option><option>General</option></select>
+      </div>
+    </div>
+    <button class="btn-gen" id="hc-btn" onclick="generateHookCaption()">Generate Hook &amp; Caption</button>
+  </div>
+  <div class="panel-right" id="hc-out"><div class="out-ph"><div class="ic">&#9998;</div><p>Isi detail produk untuk generate hook, caption, dan hashtag.</p></div></div>
+</div>
 </main>
 
 <script>
 const MODEL="gemini-3.5-flash";
 // Fallback chain: kalau model utama lagi overload (503/429), coba model lain sebelum nyerah
 const MODEL_FALLBACKS=["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-2.5-flash"];
-const b64store={vp:null,vt:null,ip:null,it:null};
+const b64store={vp:null,vt:null,ip:null,it:null,hp:null};
 // JSON extraction helpers
 function extractJSON(raw){
   if(!raw) return '';
@@ -684,7 +740,7 @@ let iStyle="Commercial Editorial",iRatio="9:16";
 const LANG={Indonesia:"Bahasa Indonesia",Malaysia:"Bahasa Malaysia",Singapore:"Singapore English",Thailand:"Thai",Philippines:"Filipino English"};
 
 function switchTab(t){
-  document.querySelectorAll('.main-tab').forEach((el,i)=>el.classList.toggle('active',['video','image'][i]===t));
+  document.querySelectorAll('.main-tab').forEach((el,i)=>el.classList.toggle('active',['video','image','hook'][i]===t));
   document.querySelectorAll('.tab-panel').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
 }
@@ -770,6 +826,9 @@ makePills('v-hookmode',v=>{
 });
 let ctaEnabled=true;
 makePills('v-cta-toggle',v=>{ctaEnabled = (v==='on');});
+let hcAngle='Auto', hcCount=5;
+makePills('hc-angle',v=>{hcAngle=v;});
+makePills('hc-count',v=>{hcCount=parseInt(v);});
 makePills('v-dur',v=>{vDur=parseInt(v);updateSI();});
 
 // ── License gate ──
@@ -2198,6 +2257,136 @@ function renderImage(parsed,raw,name){
   }else{html+=jblock('Raw Output',raw,true);}
   html+=`<div style="display:flex;gap:9px;"><button class="btn-dl" data-dl-key="${stash(raw)}" data-dl-name="image-prompts.json">&#8659; Download JSON</button></div>`;
   document.getElementById('i-out').innerHTML=html;
+}
+
+// ── HOOK & CAPTION GENERATOR ──
+async function generateHookCaption(){
+  const name=document.getElementById('hc-name').value.trim();
+  const desc=document.getElementById('hc-desc').value.trim();
+  const examplesRaw=document.getElementById('hc-examples').value.trim();
+  const country=document.getElementById('hc-country').value;
+  const social=document.getElementById('hc-platform').value;
+  const lang=LANG[country];
+  if(!name&&!b64store.hp){alert('Upload produk atau isi nama produk!');return;}
+  const btn=document.getElementById('hc-btn');
+  btn.disabled=true; btn.textContent='Generating...';
+
+  const examples=examplesRaw?examplesRaw.split(/\n+/).map(x=>x.trim()).filter(Boolean):[];
+  const angleGuide={
+    Auto:'Pick whichever angle below fits the product and description best — vary it across the different hook variations so they don\'t all feel the same.',
+    Roasting:'SELF-ROASTING / NYINDIR DIRI SENDIRI — the hook pokes fun at the viewer\'s own past decision (e.g. being single/broke/indecisive) and connects it ironically to missing out on the product/promo. Playful, self-deprecating, relatable humor — never mean-spirited toward the viewer.',
+    Curhat:'CURHAT / RELATE — written like a genuine personal vent or realization a real person would post, first-person, casual, like talking to a friend. Relatable everyday feeling first, product connects naturally after.',
+    FOMO:'FOMO / PANIC — creates urgency/anxiety about missing out (price about to go up, stock limited, promo ending) but must still sound like a real person\'s panic, not a sales banner.',
+    Retoris:'NANYA RETORIS — opens with a rhetorical question that the viewer immediately relates to or can\'t really answer, pulling them in before the product is mentioned.',
+    Kaget:'KAGET / REAKSI — opens like a genuine shocked reaction (to a price, a result, a discovery) — "gila sih", "nggak nyangka", etc.'
+  };
+  const exampleBlock=examples.length?`
+=========================================================
+REFERENCE HOOK EXAMPLES — MATCH THIS STYLE/LANGUAGE CLOSELY
+=========================================================
+The user supplied these real examples of the hook style/tone/slang they want. Study the sentence rhythm, line breaks, slang words, and emotional tone — then write NEW hooks (not copies) that feel like they came from the same person/voice:
+${examples.map((e,i)=>`Example ${i+1}: "${e}"`).join('\n')}
+Match: casual Gen-Z Indonesian slang energy, short punchy broken-up lines (not full formal sentences), the ironic/self-aware tone if present, and the way the product name slots naturally into the line.
+`:`
+No reference example was given — default to natural, casual Gen-Z Indonesian slang (bahasa gaul kekinian) written like a real person's own FYP caption, not formal ad copywriting.
+`;
+
+  const sys=`You are OMNI FLASH HOOK & CAPTION ENGINE — expert short-form social copywriter specializing in scroll-stopping hooks, captions and hashtags for affiliate/UGC-style product content.
+Output ONLY valid JSON. No markdown, no explanation, no commentary.
+
+=========================================================
+MISSION
+=========================================================
+Generate ${hcCount} distinct hook variations for a short-form video (TikTok/Reels/Shorts style), each paired with a caption and hashtag set for posting. These hooks are typically used as the on-screen text/overlay for the first 1-3 seconds of a video — short, punchy, broken into 2-4 short lines, not full paragraphs.
+
+Product name: ${name||'(infer from image)'}
+Product description: ${desc||'(infer from image)'}
+Platform: ${social} | Country/Language: ${lang}
+
+=========================================================
+HOOK ANGLE
+=========================================================
+${angleGuide[hcAngle]||angleGuide.Auto}
+${exampleBlock}
+=========================================================
+HOOK WRITING RULES
+=========================================================
+- Write in ${lang}, casual/slang register matching the examples above (or default casual Gen-Z Indonesian slang if no example given) — NEVER formal/corporate copywriting ("dapatkan sekarang", "produk terbaik", "kualitas premium")
+- Each hook = 2-4 short broken lines (like how a real person types a caption with line breaks), NOT one long sentence. Total under ~20 words.
+- The product name should slot naturally into the line, not feel bolted on
+- Make the ${hcCount} variations genuinely different from each other — different angles/openers/emotional hooks, not just reworded versions of the same line
+- Every hook must stay truthful to the product description given — no fabricated claims, fake numbers, or promises not supported by the description
+
+=========================================================
+CAPTION RULES
+=========================================================
+- Each hook gets its own caption (the text posted alongside the video, below the hook) — 1-3 short sentences, same casual voice as the hook, naturally continuing/supporting the hook's angle
+- Caption can include a light call-to-action appropriate for ${social} (e.g. mention checking the cart/link naturally) but should NOT feel like a hard sales pitch — stay in the same relatable, casual voice
+- Don't just repeat the hook text in the caption — the caption should add a little more context, personality, or a soft nudge
+
+=========================================================
+HASHTAG RULES
+=========================================================
+- 8-12 hashtags per variation, relevant to: the product category, the content angle/mood, the platform (${social}), and general reach tags appropriate for ${country}
+- Mix of: 2-3 broad/high-volume tags, 3-4 niche/product-specific tags, 2-3 angle/mood tags (e.g. #relate #fyp equivalents), 1-2 platform-shopping tags if relevant to ${social}
+- All lowercase, no spaces, each starting with #
+- Written in a mix appropriate for ${country} (don't force-translate universal tags like #fyp)
+
+Return ONLY this JSON:
+{
+  "variations": [
+    {
+      "angle_label": "short label for this variation's angle (e.g. 'Roasting - Harga Anjlok')",
+      "hook": "the hook text, with \\n between each short line",
+      "caption": "the caption text for posting",
+      "hashtags": ["#tag1","#tag2","..."]
+    }
+  ]
+}
+Generate exactly ${hcCount} items in the "variations" array.`;
+
+  const parts=[];
+  if(b64store.hp) parts.push({type:'image',source:{type:'base64',media_type:b64store.hp.mime,data:b64store.hp.data}});
+  parts.push({type:'text',text:`Product: ${name||'see image'}\nDesc: ${desc||'analyze from image'}\nAngle: ${hcAngle}\nJumlah variasi: ${hcCount}\nGenerate hook + caption + hashtags.`});
+
+  document.getElementById('hc-out').innerHTML=loadingHTML('Menganalisis produk & angle hook...');
+  const timer=startCycle(['Mikirin angle yang nendang...','Nulis variasi hook...','Nyusun caption...','Nyari hashtag relevan...']);
+
+  try{
+    const key=getKey();
+    const body=buildGeminiBody(sys,parts);
+    const data=await geminiWithRetry(key,body);
+    clearInterval(timer);
+    let raw=geminiText(data);
+    let js=extractJSON(raw);
+    let parsed=null;
+    try{parsed=JSON.parse(js);}catch(e){
+      js=repairJSON(js);
+      try{parsed=JSON.parse(js);}catch(e2){}
+    }
+    renderHookCaption(parsed,js||raw,name);
+  }catch(err){clearInterval(timer);document.getElementById('hc-out').innerHTML=errBox(err.message);}
+  btn.disabled=false; btn.textContent='Generate Hook & Caption';
+}
+
+function renderHookCaption(parsed,raw,name){
+  let html=`<div class="out-hdr"><span class="out-title">${h(name||'Hook & Caption')}</span><span class="abadge">${h(hcAngle)}</span></div>`;
+  const vars=(parsed&&Array.isArray(parsed.variations))?parsed.variations:null;
+  if(vars&&vars.length){
+    vars.forEach((v,i)=>{
+      const hookTxt=String(v.hook||'').trim();
+      const capTxt=String(v.caption||'').trim();
+      const tags=Array.isArray(v.hashtags)?v.hashtags.join(' '):String(v.hashtags||'');
+      const copyAll=[hookTxt,'',capTxt,'',tags].join('\n');
+      html+=`<div class="icard"><div class="icard-hdr"><div style="display:flex;align-items:center;gap:8px;"><span class="ibadge ib-hero">#${i+1}</span><span style="font-size:12px;color:var(--muted);">${h(v.angle_label||'')}</span></div><button class="btn-copy" data-copy-key="${stash(copyAll)}">Copy Semua</button></div>
+      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-mj">Hook</span><button class="btn-copy" data-copy-key="${stash(hookTxt)}">Copy</button></div><div class="ptxt" style="white-space:pre-line;font-weight:600;">${h(hookTxt)}</div></div>
+      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-flux">Caption</span><button class="btn-copy" data-copy-key="${stash(capTxt)}">Copy</button></div><div class="ptxt">${h(capTxt)}</div></div>
+      <div><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-neg">Hashtags</span><button class="btn-copy" data-copy-key="${stash(tags)}">Copy</button></div><div class="ptxt" style="color:var(--accent);">${h(tags)}</div></div>
+      </div>`;
+    });
+  }else{html+=jblock('Raw Output',raw,true);}
+  html+=`<div style="display:flex;gap:9px;"><button class="btn-dl" data-dl-key="${stash(raw)}" data-dl-name="hook-caption.json">&#8659; Download JSON</button></div>`;
+  document.getElementById('hc-out').innerHTML=html;
 }
 
 // ── Helpers ──
