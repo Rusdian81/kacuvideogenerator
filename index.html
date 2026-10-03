@@ -253,6 +253,7 @@ select option{background:#1a1a26;}
         <div class="pill" data-val="Testimonial">Testimonial</div>
         <div class="pill" data-val="Before After">Before/After</div>
         <div class="pill" data-val="POV Creator">POV Creator</div>
+        <div class="pill" data-val="POV Goyang Produk" style="border-color:rgba(34,211,238,.35);color:#22d3ee;">🤳 POV Goyang Produk</div>
         <div class="pill" data-val="Edukasi" style="border-color:rgba(74,222,128,.3);color:var(--success);">Edukasi</div>
         <div class="pill" data-val="Factory Crisis" style="border-color:rgba(245,200,66,.35);color:var(--gold);">Factory Crisis</div>
         <div class="pill" data-val="Anomali Mascot" style="border-color:rgba(124,92,252,.35);color:#a78bfa;">🐾 Anomali Mascot</div>
@@ -1206,6 +1207,29 @@ BANNED IN THIS MODE:
   // NOT override the scene-purpose structure or the JSON shape — they only steer HOW each scene
   // looks/sounds/is shot within that same structure.
   const STYLE_VARIANT_MAP={
+    'POV Goyang Produk': `
+=========================================================
+POV GOYANG PRODUK STYLE — ADDITIVE VISUAL GUIDANCE (OVERRIDES overlay/editing rules below)
+=========================================================
+This style mimics a raw, unedited, real-person POV clip: a hand casually holding and slowly turning/tilting the product in front of camera, one continuous-feeling handheld shot, like someone just filmed it in 10 seconds to show what they received. It must NOT look like a polished ad.
+
+VISUAL RULES:
+- Only a hand + the product fill the frame, held up at roughly chest/face height against a plain ordinary background (patterned fabric, bedsheet, wall, desk — nothing staged)
+- Motion is minimal and natural: a slow, slight rotation/tilt/shake of the wrist so different sides and angles of the product packaging become visible — NOT a demo, NOT applying/using the product, just showing it off
+- Camera is handheld POV, static framing, tiny natural shake — no push-ins, no whip pans, no speed ramps, no cuts between scenes (describe every scene's camera.movement as "static handheld, slight natural wrist rotation")
+- No talent face, no second location, no props beyond the product itself
+- Lighting: whatever ambient indoor light is available — ring light or window light, nothing dramatic or cinematic
+
+HOOK-THEN-SILENT CAPTION RULE (critical — follow exactly):
+- Scene 1 ONLY: overlay_design.headline.text and overlay_design.keyword.text (or a short 1-2 line hook) carry a scroll-stopping, punchy hook line (max ~6-8 words total across the two lines), styled as a bold text box over the product — this is the ONLY scene in the whole video allowed to show any on-screen text
+- EVERY scene from scene 2 to the final scene MUST have overlay_design.badge.text = "", overlay_design.headline.text = "", overlay_design.keyword.text = "", caption = "" — completely empty, no overlay graphic rendered at all. Do not invent captions for these scenes under any circumstance, even if other rules elsewhere say every scene needs a headline/caption — this style explicitly overrides that.
+- The hook text disappearing after scene 1 is intentional: it makes the clip feel native/organic instead of an ad, and lets the raw product footage carry the rest of the video
+
+VOICE OVER: optional and minimal — if used, it should sound like a casual real-person voiceover/caption-read, not a sales pitch. It's fine for voice_over_script to be very short or even just ambient/ no dialogue for scenes 2+, since the visual (product rotating in hand) carries the content.
+
+OVERLAY: Scene 1 = one bold, high-contrast hook text box (tan/beige or dark glass panel background, white bold serif or sans text, centered over the product). All other scenes = NO overlay elements whatsoever.
+`,
+
     'Hand Only': `
 =========================================================
 HAND ONLY STYLE — ADDITIVE VISUAL GUIDANCE
@@ -1510,6 +1534,15 @@ ${herbalBlock}
 ${factoryCrisisBlock}
 ${anomalyBlock}
 ${styleVariantBlock}
+
+=========================================================
+LOCATION / BACKGROUND RULE — auto-decide, indoor AND outdoor both allowed
+=========================================================
+There is no fixed location input from the user — you must pick the setting yourself based on the product and how it's realistically used, choosing freely between INDOOR (bedroom, bathroom, kitchen, living room, home office, cafe, car interior) and OUTDOOR (balcony, garden/yard, street, park, parking lot, poolside, rooftop) — whichever fits the product's real-world use-context best.
+- Base the choice on demonstration_possibility and environment_recommendation from product_analysis below: e.g. skincare/haircare → bathroom/bedroom vanity (indoor); car-care products → driveway/parking lot (outdoor); food/drink → kitchen/cafe table (indoor) or picnic/park (outdoor); outdoor gear/sports → park/street/yard (outdoor); cleaning products → kitchen/living room (indoor)
+- If the style's scenes follow a sequence across different purposes (Hook/Reveal/Demo/Benefit/CTA) and nothing in the active style block above restricts this, it's fine for the location to shift between 1-2 complementary settings across the video (e.g. bedroom → bathroom), but do NOT randomly alternate indoor/outdoor without a reason tied to the product's usage story
+- If the active style block above explicitly says to keep ONE single consistent location for the whole video (e.g. POV Goyang Produk), that instruction overrides this section — pick ONE indoor or outdoor setting and keep every scene's visual_prompt.environment consistent with it
+- Never default to the same generic location for every product — vary it realistically per product category
 
 =========================================================
 PRODUCT ANALYSIS — auto-detect from image/description
