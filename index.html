@@ -254,6 +254,7 @@ select option{background:#1a1a26;}
         <div class="pill" data-val="Before After">Before/After</div>
         <div class="pill" data-val="POV Creator">POV Creator</div>
         <div class="pill" data-val="POV Goyang Produk" style="border-color:rgba(34,211,238,.35);color:#22d3ee;">🤳 POV Goyang Produk</div>
+        <div class="pill" data-val="ASMR Unboxing" style="border-color:rgba(244,114,182,.35);color:#f472b6;">📦 ASMR Unboxing</div>
         <div class="pill" data-val="Edukasi" style="border-color:rgba(74,222,128,.3);color:var(--success);">Edukasi</div>
         <div class="pill" data-val="Factory Crisis" style="border-color:rgba(245,200,66,.35);color:var(--gold);">Factory Crisis</div>
         <div class="pill" data-val="Anomali Mascot" style="border-color:rgba(124,92,252,.35);color:#a78bfa;">🐾 Anomali Mascot</div>
@@ -275,6 +276,13 @@ select option{background:#1a1a26;}
       <div class="field" id="hook-manual-field" style="display:none;margin-top:7px;">
         <label>Teks hook buat scene 1 <span style="color:var(--muted);font-size:11px;">(dipakai persis, nggak di-reword AI)</span></label>
         <textarea id="hook-manual-text" placeholder="cth: Literally kapan lagi dapet harga segini?!"></textarea>
+      </div>
+    </div>
+    <div>
+      <div class="slabel">Call To Action</div>
+      <div class="pill-group" id="v-cta-toggle">
+        <div class="pill active" data-val="on">&#9989; Pakai CTA</div>
+        <div class="pill" data-val="off">&#128683; Tanpa CTA</div>
       </div>
     </div>
     <div>
@@ -760,6 +768,8 @@ makePills('v-hookmode',v=>{
   const f=document.getElementById('hook-manual-field');
   if(f) f.style.display = (v==='manual') ? '' : 'none';
 });
+let ctaEnabled=true;
+makePills('v-cta-toggle',v=>{ctaEnabled = (v==='on');});
 makePills('v-dur',v=>{vDur=parseInt(v);updateSI();});
 
 // ── License gate ──
@@ -854,20 +864,20 @@ function purposes(n){
   if(vStyle==='Factory Crisis'){
     // Priority hierarchy (locked): Factory Validation (always #1) → Crisis Hook → Internal Pressure → QC Pass → Clearance Logic → CTA Loop (always last)
     // Lower-priority middle items get dropped first when scene count is tight.
-    if(n===1) return['Factory Validation + Crisis Hook + CTA Loop'];
-    if(n===2) return['Factory Validation','Crisis Hook + CTA Loop'];
+    if(n===1) return[ctaEnabled?'Factory Validation + Crisis Hook + CTA Loop':'Factory Validation + Crisis Hook + Resolution'];
+    if(n===2) return['Factory Validation',ctaEnabled?'Crisis Hook + CTA Loop':'Crisis Hook + Resolution'];
     const midFactory=['Crisis Hook','Internal Pressure','QC Pass','Clearance Logic'];
     const rFactory=['Factory Validation', ...midFactory.slice(0, n-2)];
-    rFactory.push('CTA Loop');
+    rFactory.push(ctaEnabled?'CTA Loop':'Resolution');
     return rFactory;
   }
   if(vStyle==='Anomali Mascot'){
     // Priority hierarchy (locked): Anomaly Discovery (always #1) → Conflict Setup → Struggle Moment → Turning Point → Victory → Product Hero Shot + CTA (always last)
-    if(n===1) return['Anomaly Discovery + Conflict + Product Hero Shot + CTA'];
-    if(n===2) return['Anomaly Discovery + Conflict Setup','Turning Point + Product Hero Shot + CTA'];
+    if(n===1) return[ctaEnabled?'Anomaly Discovery + Conflict + Product Hero Shot + CTA':'Anomaly Discovery + Conflict + Product Hero Shot'];
+    if(n===2) return['Anomaly Discovery + Conflict Setup',ctaEnabled?'Turning Point + Product Hero Shot + CTA':'Turning Point + Product Hero Shot'];
     const midAnomaly=['Conflict Setup','Struggle Moment','Turning Point','Victory'];
     const rAnomaly=['Anomaly Discovery', ...midAnomaly.slice(0, n-2)];
-    rAnomaly.push('Product Hero Shot + CTA');
+    rAnomaly.push(ctaEnabled?'Product Hero Shot + CTA':'Product Hero Shot');
     return rAnomaly;
   }
   if(vStyle==='Edukasi'){
@@ -880,12 +890,12 @@ function purposes(n){
     rEdu.push('Key Takeaway');
     return rEdu;
   }
-  if(n===1)return['Hook + CTA'];
-  if(n===2)return['Hook','CTA'];
+  if(n===1)return[ctaEnabled?'Hook + CTA':'Hook + Outro'];
+  if(n===2)return['Hook',ctaEnabled?'CTA':'Outro'];
   const mid=['Reveal','Demo','Benefit','Social Proof'];
   const r=['Hook'];
   for(let i=0;i<n-2;i++)r.push(mid[i%mid.length]);
-  r.push('CTA'); return r;
+  r.push(ctaEnabled?'CTA':'Outro'); return r;
 }
 
 function loadingHTML(s){return`<div style="display:flex;flex-direction:column;gap:11px;padding:6px 0;"><div class="lbar on"><div class="lbar-in"></div></div><div class="stxt on" id="stxt">${s}</div></div>`;}
@@ -944,12 +954,15 @@ The user supplied this EXACT hook text to use for scene 1's on-screen text: "${h
     }
   };
   const ctaGuide=(CTA_MATRIX[social]&&CTA_MATRIX[social][country])||CTA_MATRIX['TikTok']['Indonesia'];
-  // Edukasi mode: CTA completely disabled — override ctaGuide with neutral instruction
-  const activeCTA=isEdukasi
-    ? 'NO CTA — This is educational content. Do NOT mention any platform, cart, link, or call-to-action anywhere in this video.'
+  const ctaOff = !ctaEnabled || isEdukasi;
+  // Edukasi mode OR user toggled "Tanpa CTA": CTA completely disabled — override ctaGuide with neutral instruction
+  const activeCTA=ctaOff
+    ? (isEdukasi
+        ? 'NO CTA — This is educational content. Do NOT mention any platform, cart, link, or call-to-action anywhere in this video.'
+        : 'NO CTA — The user turned CTA off for this video. Do NOT mention any platform, cart, link, checkout, or call-to-action anywhere in this video.')
     : ctaGuide;
   // Extract just the platform action verb (before first |) for clean VO embedding
-  const ctaAction=isEdukasi ? '' : ctaGuide.split('|')[0].trim();
+  const ctaAction=ctaOff ? '' : ctaGuide.split('|')[0].trim();
 
   // CTA Style DNA — HYBRID: TikTok-compliant value framing throughout the VO body,
   // but the FINAL sentence always lands on an explicit platform action to lift CTR.
@@ -1235,6 +1248,26 @@ BANNED IN THIS MODE:
   // NOT override the scene-purpose structure or the JSON shape — they only steer HOW each scene
   // looks/sounds/is shot within that same structure.
   const STYLE_VARIANT_MAP={
+    'ASMR Unboxing': `
+=========================================================
+ASMR UNBOXING STYLE — ADDITIVE VISUAL GUIDANCE (OVERRIDES overlay/editing/VO rules below)
+=========================================================
+This style mimics a cozy, aesthetic "satisfying unboxing" clip: a nicely styled desk/vanity setup, soft warm lighting, the product's box/packaging being opened and explored in slow, deliberate close-ups. It must feel sensory and premium, NOT like an ad with text slapped on it. The visual reveal itself IS the hook — no spoken or written sales pitch needed.
+
+VISUAL RULES:
+- One consistent, styled "aesthetic setup" background for the entire video — e.g. a cozy desk/vanity with soft props (lamp, small trinkets, pegboard or plain wall), warm ambient or soft ring-light glow, shallow depth of field with a gently blurred background. This OVERRIDES the general LOCATION/BACKGROUND RULE's indoor/outdoor variety — do NOT change locations across scenes here; the appeal comes from one consistent, pretty, controlled set, not from walking around
+- Camera is mostly static/tripod-like framing per scene (small handheld micro-shake is fine, but NOT walking, NOT POV wandering) — each scene is its own close-up/macro composition, cuts between scenes are normal here (unlike POV Goyang Produk's continuous-take feel)
+- Hands enter frame from the side/bottom to interact with the product — slow, deliberate, ASMR-style movements: fingers tracing textures, slowly lifting a lid, peeling a seal, rotating the product to catch the light, unclipping a small accessory/charm
+- Shot progression across scenes should reveal the product like a story: box/packaging exterior (intrigue) → opening/pulling the product out → a functional or textural close-up detail (cap, button, mechanism, fabric texture) → an accessory/branding/logo close-up → a final styled hero shot of the product sitting pretty on the set. Map this naturally onto whatever scene purposes are assigned (Hook/Reveal/Demo/Benefit/CTA or equivalent)
+- Lighting: warm, soft, cozy — desk lamp or ring light glow, dreamy bokeh, pastel or warm-neutral color grading that matches the product's own packaging colors
+- Do NOT replicate any watermark, logo, username, or "AI-generated" disclaimer text — those are platform-added elements from reference footage, not part of the creative output
+
+ZERO ON-SCREEN TEXT (critical — this style has NO hook caption, unlike POV Goyang Produk):
+- overlay_design.badge.text, headline.text, keyword.text, and caption must ALL be empty string "" for EVERY scene, including scene 1 — this style never shows any overlay text at all. The slow, satisfying visual reveal is the hook; it needs no caption to stop the scroll.
+- Exception only if CTA is enabled (see CTA RULES section): the FINAL scene only may carry ONE small, minimal, elegantly-styled closing text (matching the aesthetic's soft color palette/typography, small and tasteful — never a big bold ad banner) referencing the platform action. If CTA is disabled, the entire video stays 100% textless from first scene to last.
+
+VOICE OVER: NONE. voice_over_script must be "" (empty string) for every single scene regardless of CTA setting — this style never has spoken narration. The only audio is implied ambient/ASMR product-handling sound (box crinkling, soft taps, a quiet click of a lid) — describe this briefly in each scene's sound/ambience field if the schema has one, but never as spoken dialogue.
+`,
     'POV Goyang Produk': `
 =========================================================
 POV GOYANG PRODUK STYLE — ADDITIVE VISUAL GUIDANCE (OVERRIDES overlay/editing rules below)
@@ -1556,7 +1589,11 @@ Social platform: ${social}
 =========================================================
 CTA RULES FOR FINAL SCENE — READ CAREFULLY
 =========================================================
-${ctaStyleKey === 'standard'
+${ctaOff ? `CTA IS DISABLED FOR THIS VIDEO — the user chose "Tanpa CTA".
+→ The final scene (purpose: "Outro"/"Resolution"/equivalent) must NOT contain any call-to-action: no mention of buying, cart, checkout, link in bio, "klik", "order now", discounts, urgency, or any platform action whatsoever
+→ overlay_design badge/headline for the final scene must NOT be a CTA badge (no "Klik Keranjang Kuning!", no "WORTH IT", no "Link di Bio!") — use a plain closing visual cue instead if any overlay is used at all (e.g. just the product name, or nothing, depending on the active style's own overlay rules)
+→ voice_over_script for the final scene (if this style uses VO at all) should end on a natural, satisfying note about the product/experience itself — NOT a sales pitch or action prompt. Think "that's it, this is genuinely nice" energy, not "go buy this now"
+→ Ignore ctaStyleKey entirely — it does not apply when CTA is off` : `${ctaStyleKey === 'standard'
   ? `ACTIVE STYLE: STANDARD
 Platform: ${social} | Country: ${activeCTA.split('|')[0]?.trim()||''}
 Badge color: ${activeCTA.split('|')[1]?.trim()||''}
@@ -1574,7 +1611,7 @@ Badge color: ${activeCTA.split('|')[1]?.trim()||''}
 CTA STYLE DNA — FOLLOW THIS EXACTLY
 =========================================================
 ${ctaStyleDNA}
-${ctaLengthNote}
+${ctaLengthNote}`}
 
 ${eduBlock}
 ${herbalBlock}
@@ -1589,7 +1626,7 @@ LOCATION / BACKGROUND RULE — auto-decide, indoor AND outdoor both allowed
 There is no fixed location input from the user — you must pick the setting yourself based on the product and how it's realistically used, choosing freely between INDOOR (bedroom, bathroom, kitchen, living room, home office, cafe, car interior) and OUTDOOR (balcony, garden/yard, street, park, parking lot, poolside, rooftop) — whichever fits the product's real-world use-context best.
 - Base the choice on demonstration_possibility and environment_recommendation from product_analysis below: e.g. skincare/haircare → bathroom/bedroom vanity (indoor); car-care products → driveway/parking lot (outdoor); food/drink → kitchen/cafe table (indoor) or picnic/park (outdoor); outdoor gear/sports → park/street/yard (outdoor); cleaning products → kitchen/living room (indoor)
 - If the style's scenes follow a sequence across different purposes (Hook/Reveal/Demo/Benefit/CTA) and nothing in the active style block above restricts this, it's fine for the location to shift between 1-2 complementary settings across the video (e.g. bedroom → bathroom), but do NOT randomly alternate indoor/outdoor without a reason tied to the product's usage story
-- If the active style block above gives its own specific location-variety guidance (e.g. POV Goyang Produk's "move through 2-3 ordinary spots" rule), follow that instead of this section's general shifting logic
+- If the active style block above gives its own specific location rule (e.g. POV Goyang Produk's "move through 2-3 ordinary spots" rule, or ASMR Unboxing's "one consistent styled set, no location changes" rule), follow that instead of this section's general shifting logic
 - Never default to the same generic location for every product — vary it realistically per product category
 
 =========================================================
@@ -1666,7 +1703,7 @@ Use in sequence: Motion Blur → Whip Pan → Speed Ramp → Zoom Punch → Flas
 =========================================================
 VOICE OVER RULES — CRITICAL — DYNAMIC WORD COUNT PER SCENE
 =========================================================
-${vStyle==='POV Goyang Produk'?`⚠️ OVERRIDE FOR THIS STYLE: "POV Goyang Produk" has NO voice over at all. Ignore every word-count/budget/purpose-adjustment rule below entirely — set voice_over_script to "" (empty string) for EVERY scene, including scene 1. The video is silent except ambient product-handling sound; only the scene 1 hook text carries any message. Do not write any spoken script for any scene in this style.`:`
+${(vStyle==='POV Goyang Produk'||vStyle==='ASMR Unboxing')?`⚠️ OVERRIDE FOR THIS STYLE: "${vStyle}" has NO voice over at all. Ignore every word-count/budget/purpose-adjustment rule below entirely — set voice_over_script to "" (empty string) for EVERY scene, including scene 1. The video is silent except ambient product-handling sound${vStyle==='POV Goyang Produk'?'; only the scene 1 hook text carries any message':' — this style has no on-screen text either, the visuals alone carry the whole video'}. Do not write any spoken script for any scene in this style.`:`
 Language: ${lang}
 Tone: ${toneLine}
 
@@ -1799,7 +1836,7 @@ Each scene object — STANDALONE, complete, copy-pasteable to video generator:
   "scene": 1,
   "duration_range": "0-${vScene}s",
   "purpose": "Hook",
-  "voice_over_script": "VO line for THIS scene — word count follows the dynamic range + purpose adjustment from VOICE OVER RULES above, NOT a fixed number. If active style is POV Goyang Produk, this is always \\"\\" (empty) for every scene.",
+  "voice_over_script": "VO line for THIS scene — word count follows the dynamic range + purpose adjustment from VOICE OVER RULES above, NOT a fixed number. If active style is POV Goyang Produk or ASMR Unboxing, this is always \\"\\" (empty) for every scene.",
   "camera": { "movement": "", "lens": "", "speed": "" },
   "visual_prompt": { "environment": "Ultra realistic", "subject": "MUST restate the exact_visual_description details (color/shape/packaging) established in product_analysis — the same physical product, not a generic reinterpretation", "composition": "Commercial Composition", "lighting": "Premium cinematic", "camera_motion": "Dynamic", "depth_of_field": "Realistic", "quality": "Ultra realistic 8K", "aspect_ratio": "9:16" },
   "motion_prompt": { "camera": "", "subject_motion": "", "background_motion": "", "transition": "" },
