@@ -2375,13 +2375,13 @@ function renderHookCaption(parsed,raw,name){
   if(vars&&vars.length){
     vars.forEach((v,i)=>{
       const hookTxt=String(v.hook||'').trim();
-      const capTxt=String(v.caption||'').trim();
-      const tags=Array.isArray(v.hashtags)?v.hashtags.join(' '):String(v.hashtags||'');
+      const capTxt=String(v.caption||'').trim()||'(caption kosong dari AI — coba generate ulang)';
+      const tags=(Array.isArray(v.hashtags)?v.hashtags.join(' '):String(v.hashtags||'').trim())||'(hashtag kosong dari AI — coba generate ulang)';
       const copyAll=[hookTxt,'',capTxt,'',tags].join('\n');
-      html+=`<div class="icard"><div class="icard-hdr"><div style="display:flex;align-items:center;gap:8px;"><span class="ibadge ib-hero">#${i+1}</span><span style="font-size:12px;color:var(--muted);">${h(v.angle_label||'')}</span></div><button class="btn-copy" data-copy-key="${stash(copyAll)}">Copy Semua</button></div>
-      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-mj">Hook</span><button class="btn-copy" data-copy-key="${stash(hookTxt)}">Copy</button></div><div class="ptxt" style="white-space:pre-line;font-weight:600;">${h(hookTxt)}</div></div>
-      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-flux">Caption</span><button class="btn-copy" data-copy-key="${stash(capTxt)}">Copy</button></div><div class="ptxt">${h(capTxt)}</div></div>
-      <div><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-neg">Hashtags</span><button class="btn-copy" data-copy-key="${stash(tags)}">Copy</button></div><div class="ptxt" style="color:var(--accent);">${h(tags)}</div></div>
+      html+=`<div class="icard"><div class="icard-hdr"><div style="display:flex;align-items:center;gap:8px;"><span class="ibadge ib-hero">#${i+1}</span><span style="font-size:12px;color:var(--muted);">${h(v.angle_label||'')}</span></div><button class="btn-copy" data-copy-key="${stash(copyAll)}" title="Copy hook + caption + hashtag sekaligus, dipisah baris kosong">&#128203; Copy Semua</button></div>
+      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-mj">Hook</span><button class="btn-copy" data-copy-key="${stash(hookTxt)}">&#128203; Copy Hook</button></div><div class="ptxt" style="white-space:pre-line;font-weight:600;">${h(hookTxt)}</div></div>
+      <div style="border-bottom:1px solid var(--border);"><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-flux">Caption</span><button class="btn-copy" data-copy-key="${stash(capTxt)}">&#128203; Copy Caption</button></div><div class="ptxt">${h(capTxt)}</div></div>
+      <div><div style="padding:8px 13px 0;display:flex;align-items:center;justify-content:space-between;"><span class="ibadge ib-neg">Hashtags</span><button class="btn-copy" data-copy-key="${stash(tags)}">&#128203; Copy Hashtag</button></div><div class="ptxt" style="color:var(--accent);">${h(tags)}</div></div>
       </div>`;
     });
   }else{html+=jblock('Raw Output',raw,true);}
