@@ -1359,6 +1359,7 @@ HOOK-THEN-SILENT CAPTION RULE (critical — follow exactly):
 - Scene 1 ONLY: overlay_design.headline.text and overlay_design.keyword.text (or a short 1-2 line hook) carry a scroll-stopping, punchy hook line (max ~6-8 words total across the two lines), styled as a bold text box over the product — this is the ONLY scene in the whole video allowed to show any on-screen text
 - The hook's on-screen duration follows the normal scene 1 timing already set elsewhere (duration_range for scene 1) — do NOT shorten or extend it, do NOT make the hook text disappear mid-scene-1; it stays visible for the full scene 1 duration exactly like every other style, only scenes 2+ go silent
 - EVERY scene from scene 2 to the final scene MUST have overlay_design.badge.text = "", overlay_design.headline.text = "", overlay_design.keyword.text = "", caption = "" — completely empty, no overlay graphic rendered at all. Do not invent captions for these scenes under any circumstance, even if other rules elsewhere say every scene needs a headline/caption — this style explicitly overrides that.
+- CTA EXCEPTION: if CTA is enabled (see CTA RULES section), the FINAL scene only may break the "empty overlay" rule just enough to show ONE small, minimal platform-action text (e.g. "Klik Keranjang Kuning!"), styled like a smaller/plainer version of the scene 1 hook box — never spoken, never as VO. If CTA is disabled, the final scene stays just as empty/textless as every other scene 2+.
 - The hook text disappearing after scene 1 is intentional: it makes the clip feel native/organic instead of an ad, and lets the raw product footage carry the rest of the video
 
 HOOK LANGUAGE — casual Gen-Z Indonesian slang (bahasa gaul kekinian), NOT formal ad copywriting:
@@ -1650,10 +1651,15 @@ Social platform: ${social}
 =========================================================
 CTA RULES FOR FINAL SCENE — READ CAREFULLY
 =========================================================
-${ctaOff ? `CTA IS DISABLED FOR THIS VIDEO — the user chose "Tanpa CTA".
+${voOff ? (ctaOff ? `CTA IS DISABLED, and this style ("${vStyle}") has NO voice over at all.
+→ voice_over_script stays "" (empty) for every scene, including the final one — this is already enforced by VOICE OVER RULES above, it is restated here only for clarity
+→ The final scene must not contain any call-to-action in any form — no overlay CTA text, no spoken CTA (there is no speech at all), nothing. It ends purely on the visual/product itself.` : `CTA IS ENABLED, but this style ("${vStyle}") has NO voice over at all — do NOT resolve this by adding VO.
+→ voice_over_script stays "" (empty string) for EVERY scene, including the final one, no matter what the rest of this CTA section below says about "VO ending must mention..." — that instruction does NOT apply to this style. There is no spoken CTA, ever, in this style.
+→ Instead, the platform action "${ctaAction}" must be expressed ONLY as on-screen text: a small, minimal overlay/caption in the FINAL scene only, styled consistent with this style's own visual rules (see the style's own CTA-exception note above, e.g. ASMR Unboxing / POV Goyang Produk's "final scene may carry one minimal closing text if CTA is enabled" allowance). Keep it short (platform action phrase only, e.g. "Klik Keranjang Kuning!"), not a full sentence.
+→ Ignore every other "VO ending/VO body/VO final sentence" instruction in the STANDARD/HYBRID blocks below — none of them apply here since this style has no VO` ) : `${ctaOff ? `CTA IS DISABLED FOR THIS VIDEO — the user chose "Tanpa CTA".
 → The final scene (purpose: "Outro"/"Resolution"/equivalent) must NOT contain any call-to-action: no mention of buying, cart, checkout, link in bio, "klik", "order now", discounts, urgency, or any platform action whatsoever
 → overlay_design badge/headline for the final scene must NOT be a CTA badge (no "Klik Keranjang Kuning!", no "WORTH IT", no "Link di Bio!") — use a plain closing visual cue instead if any overlay is used at all (e.g. just the product name, or nothing, depending on the active style's own overlay rules)
-→ voice_over_script for the final scene (if this style uses VO at all) should end on a natural, satisfying note about the product/experience itself — NOT a sales pitch or action prompt. Think "that's it, this is genuinely nice" energy, not "go buy this now"
+→ voice_over_script for the final scene should end on a natural, satisfying note about the product/experience itself — NOT a sales pitch or action prompt. Think "that's it, this is genuinely nice" energy, not "go buy this now"
 → Ignore ctaStyleKey entirely — it does not apply when CTA is off` : `${ctaStyleKey === 'standard'
   ? `ACTIVE STYLE: STANDARD
 Platform: ${social} | Country: ${activeCTA.split('|')[0]?.trim()||''}
@@ -1666,7 +1672,7 @@ Badge color: ${activeCTA.split('|')[1]?.trim()||''}
 → VO final sentence: MUST naturally attach the explicit platform action "${ctaAction}" right after the compliant close — this is what drives CTR, do not skip it
 → Overlay badge: use the compliant style's badge as primary (e.g. "WORTH IT", "TERPERCAYA")
 → Headline: reference the compliant style's value angle, not the raw platform action
-→ This hybrid approach is intentional: compliant narrative throughout + one clear explicit action cue at the very end`}
+→ This hybrid approach is intentional: compliant narrative throughout + one clear explicit action cue at the very end`}`}
 
 =========================================================
 CTA STYLE DNA — FOLLOW THIS EXACTLY
@@ -1982,6 +1988,12 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
       try{parsed=JSON.parse(js);}catch(e){
         js=repairJSON(js);
         try{parsed=JSON.parse(js);}catch(e2){}
+      }
+      // CODE-LEVEL SAFETY NET: some styles must have ZERO voice over, no matter what the AI returned.
+      // We don't rely on prompt-following alone — force-strip it here so it's 100% guaranteed.
+      if(parsed && (vStyle==='POV Goyang Produk'||vStyle==='ASMR Unboxing') && Array.isArray(parsed.scenes)){
+        parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
+        js = JSON.stringify(parsed, null, 2);
       }
       return {parsed,js:js||raw,angle:requestedAngles[ai]||'Auto',failed:false};
     }catch(err){
@@ -2488,6 +2500,10 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
     try{parsed=JSON.parse(js);}catch(e){
       js=repairJSON(js);
       try{parsed=JSON.parse(js);}catch(e2){}
+    }
+    if(parsed && (vStyle==='POV Goyang Produk'||vStyle==='ASMR Unboxing') && Array.isArray(parsed.scenes)){
+      parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
+      js = JSON.stringify(parsed, null, 2);
     }
     renderVideo(parsed,js||raw,productName,retrySc,container,{failed:false});
   }catch(err){
