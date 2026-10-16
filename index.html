@@ -2007,6 +2007,7 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
         parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
         js = JSON.stringify(parsed, null, 2);
       }
+      if(parsed && Array.isArray(parsed.scenes) && await enforceVOLimits(parsed)) js = JSON.stringify(parsed, null, 2);
       return {parsed,js:js||raw,angle:requestedAngles[ai]||'Auto',failed:false};
     }catch(err){
       return {parsed:null,js:'',angle:requestedAngles[ai]||'Auto',failed:true,errorMsg:err.message||'Gagal generate angle ini'};
@@ -2451,7 +2452,7 @@ function buildStoryboardBlock(){
     Product visible: ${b.shows_product?'yes':'not necessarily'}
     Voice over: ${b.vo?'"'+b.vo+'"':'(none)'}`;
     }).join('\n');
-    return `SCENE ${c.k+1} | duration_range "${sbFmt(c.w0)}-${sbFmt(c.w1)}s" (clip length ${sbFmt(c.w1-c.w0)}s)\n${lines}`;
+    return `SCENE ${c.k+1} | duration_range "${sbFmt(c.w0)}-${sbFmt(c.w1)}s" (clip length ${sbFmt(c.w1-c.w0)}s) — voice over budget for this clip: MAX ${Math.max(3,Math.round((c.w1-c.w0)*2.4))} words in total\n${lines}`;
   }).join('\n\n');
   return `
 =========================================================
@@ -2471,7 +2472,7 @@ HOW TO APPLY THE BLUEPRINT:
 - motion_prompt.subject_motion MUST be written as a time-coded sequence using the local ranges (e.g. "0-1.7s: ...; 1.7-3.4s: ...") so the i2v generator performs each beat at the right second. visual_prompt (environment/subject/composition) must describe the same person, place and product as the beats — you may enrich with lens, lighting and motion detail but never change what happens.
 - If a beat continues from the previous clip, start this clip exactly where the previous clip's last frame ended (same pose, position and framing); if it continues into the next clip, end mid-action so the next clip can pick it up.
 - overlay_design: headline.text = on-screen headline of the first beat in the clip (keep wording; "MAX 4 WORDS" does not apply); put the later beats' headlines in keyword.text joined with " → " and callout chips in badge.text; every beat's text also goes in its timeline entry. If a MANUAL HOOK OVERRIDE appears earlier in this prompt, it replaces the first clip's opening headline.
-- voice_over_script of a clip = the VO lines of its beats in order, wording kept (trim only a beat that clearly cannot be spoken in its own time window, about 2.6 words per second). The generic VOICE OVER word-ceiling, specificity and anti-repetition rules do NOT apply to rewriting these lines.
+- voice_over_script of a clip = the VO lines of its beats in order, wording kept BUT the total must stay within the clip's word budget stated above (about 2.4 words per second). If the beats' VO lines add up to more words than the budget, shorten them (keep the hook and the closing action) instead of exceeding it — a script longer than the clip gets cut off in the video. The specificity and anti-repetition rules do NOT apply to rewriting these lines.
 - Set marketing_angle to match the angle this storyboard tells.
 - The active Gaya Konten style and CTA setting STILL win where they conflict: if the style forbids voice over or on-screen text those fields stay empty (timeline voice_over/on_screen_text too); if the style dictates camera language (handheld POV, hands only, no talent face) keep the beats, order, timing and messaging but execute them in that style's visual language; if CTA is disabled, drop any cart/CTA wording from the final beat.
 `;
@@ -2541,6 +2542,57 @@ JSON:
   btn.disabled=false;
 }
 makePills('v-src',v=>setSrcMode(v));
+
+// ── VO LENGTH ENFORCER: VO must fit the scene duration, checked in code (not only by prompt) ──
+function voWords(t){return String(t||'').trim().split(/\s+/).filter(Boolean).length;}
+function sceneSecs(sc,fallback){
+  const m=String(sc&&sc.duration_range||'').match(/([\d.]+)\s*-\s*([\d.]+)/);
+  if(m){const d=parseFloat(m[2])-parseFloat(m[1]); if(d>0) return d;}
+  return fallback;
+}
+function trimVOLocal(text,max){
+  let pieces=String(text).split(/(?<=[.!?])\s+/).filter(Boolean);
+  const wc=a=>voWords(a.join(' '));
+  while(wc(pieces)>max && pieces.length>2){
+    let idx=1; for(let i=1;i<pieces.length-1;i++) if(voWords(pieces[i])>voWords(pieces[idx])) idx=i;
+    pieces.splice(idx,1);
+  }
+  let out=pieces.join(' ');
+  if(voWords(out)>max){
+    const last=pieces.length>1?pieces[pieces.length-1]:'';
+    const room=Math.max(3,max-voWords(last));
+    const first=(pieces.length>1?pieces[0]:out).split(/\s+/).slice(0,room).join(' ').replace(/[,;:]+$/,'');
+    out=(first+(/[.!?]$/.test(first)?'':'.')+(last?' '+last:'')).trim();
+    if(voWords(out)>max) out=out.split(/\s+/).slice(0,max).join(' ').replace(/[,;:]+$/,'')+'.';
+  }
+  return out;
+}
+async function shortenVO(text,max,lang){
+  try{
+    const sys=`You shorten voice over scripts for short videos. Rewrite the script to AT MOST ${max} words in ${lang||'the same language'}, same casual spoken tone. Keep the opening hook, keep ONE concrete product detail, and keep the closing call to action if the original has one (e.g. "klik keranjang kuning"). Drop filler and repeated ideas. Output ONLY the rewritten script as plain text, no quotes, no explanation.`;
+    const data=await geminiWithRetry(getKey(),buildGeminiBody(sys,[{type:'text',text:text}]));
+    let out=String(geminiText(data)||'').replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s*\n+\s*/g,' ');
+    if(out && voWords(out)<=max+1) return out;
+  }catch(e){}
+  return trimVOLocal(text,max);
+}
+async function enforceVOLimits(parsed){
+  if(!parsed||!Array.isArray(parsed.scenes)) return false;
+  const lang=LANG[document.getElementById('v-country')?.value||'Indonesia'];
+  let changed=false;
+  for(const sc of parsed.scenes){
+    const vo=String(sc.voice_over_script||'').trim();
+    if(!vo) continue;
+    const secs=sceneSecs(sc,vScene);
+    const target=Math.max(3,Math.round(secs*2.4)), trigger=Math.round(secs*2.6)+1;
+    if(voWords(vo)>trigger){
+      const el=document.getElementById('stxt'); if(el) el.textContent='Merapikan VO biar pas '+sbFmt(secs)+' detik...';
+      sc.voice_over_script=await shortenVO(vo,target,lang);
+      changed=true;
+    }
+  }
+  return changed;
+}
 
 // ── Helpers ──
 // Flatten nested scene fields into clean, copy-paste-ready prompt strings
@@ -2643,6 +2695,7 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
       parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
       js = JSON.stringify(parsed, null, 2);
     }
+    if(parsed && Array.isArray(parsed.scenes) && await enforceVOLimits(parsed)) js = JSON.stringify(parsed, null, 2);
     renderVideo(parsed,js||raw,productName,retrySc,container,{failed:false});
   }catch(err){
     renderVideo(null,'',productName,retrySc,container,{failed:true,angle:retryAngle,errorMsg:err.message||'Gagal lagi, coba sekali lagi'});
