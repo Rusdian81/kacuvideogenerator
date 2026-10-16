@@ -2007,7 +2007,7 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
         parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
         js = JSON.stringify(parsed, null, 2);
       }
-      if(parsed && Array.isArray(parsed.scenes) && await enforceVOLimits(parsed)) js = JSON.stringify(parsed, null, 2);
+      if(parsed && Array.isArray(parsed.scenes)){ let ch3=await enforceVOLimits(parsed); if(sbActive() && addSbLeakGuards(parsed)) ch3=true; if(ch3) js = JSON.stringify(parsed, null, 2); }
       return {parsed,js:js||raw,angle:requestedAngles[ai]||'Auto',failed:false};
     }catch(err){
       return {parsed:null,js:'',angle:requestedAngles[ai]||'Auto',failed:true,errorMsg:err.message||'Gagal generate angle ini'};
@@ -2473,6 +2473,7 @@ HOW TO APPLY THE BLUEPRINT:
 - If a beat continues from the previous clip, start this clip exactly where the previous clip's last frame ended (same pose, position and framing); if it continues into the next clip, end mid-action so the next clip can pick it up.
 - overlay_design: headline.text = on-screen headline of the first beat in the clip (keep wording; "MAX 4 WORDS" does not apply); put the later beats' headlines in keyword.text joined with " → " and callout chips in badge.text; every beat's text also goes in its timeline entry. If a MANUAL HOOK OVERRIDE appears earlier in this prompt, it replaces the first clip's opening headline.
 - voice_over_script of a clip = the VO lines of its beats in order, wording kept BUT the total must stay within the clip's word budget stated above (about 2.4 words per second). If the beats' VO lines add up to more words than the budget, shorten them (keep the hook and the closing action) instead of exceeding it — a script longer than the clip gets cut off in the video. The specificity and anti-repetition rules do NOT apply to rewriting these lines.
+- THE STORYBOARD IS BEHIND-THE-SCENES ONLY. Never reproduce any storyboard UI in the video: no scene numbers, no time-range pills (like "7-8.5s"), no scene label captions (like "Menyapu area sekitar sofa"), no VO boxes, no panel borders or grid. Beat labels and time codes inside "timeline" and "motion_prompt" are timing instructions for the generator, NOT text to display. The ONLY text allowed on screen is what overlay_design specifies (and nothing at all if the style forbids on-screen text). Write the footage as clean full-frame 9:16 video, and add the storyboard-UI terms above to each scene's negative_prompt.
 - Set marketing_angle to match the angle this storyboard tells.
 - The active Gaya Konten style and CTA setting STILL win where they conflict: if the style forbids voice over or on-screen text those fields stay empty (timeline voice_over/on_screen_text too); if the style dictates camera language (handheld POV, hands only, no talent face) keep the beats, order, timing and messaging but execute them in that style's visual language; if CTA is disabled, drop any cart/CTA wording from the final beat.
 `;
@@ -2543,6 +2544,20 @@ JSON:
 }
 makePills('v-src',v=>setSrcMode(v));
 
+// ── STORYBOARD LEAK GUARD: storyboard UI (scene number, time pill, label, VO box) must never appear in the video ──
+const SB_LEAK_NEG='storyboard panel layout, storyboard grid or frames, scene number badge, timestamp or time-range pill, scene label caption, burned-in time codes, voice over text box, subtitle labels describing the action, behind-the-scenes text, on-screen text that is not in overlay_design';
+function addSbLeakGuards(parsed){
+  if(!parsed||!Array.isArray(parsed.scenes)) return false;
+  parsed.scenes.forEach(sc=>{
+    const neg=String(sc.negative_prompt||'');
+    if(!neg.includes('storyboard panel layout')) sc.negative_prompt=(neg?neg+', ':'')+SB_LEAK_NEG;
+    if(sc.visual_prompt&&typeof sc.visual_prompt==='object'){
+      const comp=String(sc.visual_prompt.composition||'');
+      if(!/no storyboard UI/i.test(comp)) sc.visual_prompt.composition=(comp?comp+'; ':'')+'full-frame clean 9:16 footage, no storyboard UI, no scene numbers or timestamps on screen';
+    }
+  });
+  return true;
+}
 // ── VO LENGTH ENFORCER: VO must fit the scene duration, checked in code (not only by prompt) ──
 function voWords(t){return String(t||'').trim().split(/\s+/).filter(Boolean).length;}
 function sceneSecs(sc,fallback){
@@ -2695,7 +2710,7 @@ Rotate from: Problem, Mistake, Curiosity, Hidden Benefit, Life Hack, Comparison,
       parsed.scenes.forEach(sc3=>{ sc3.voice_over_script=''; });
       js = JSON.stringify(parsed, null, 2);
     }
-    if(parsed && Array.isArray(parsed.scenes) && await enforceVOLimits(parsed)) js = JSON.stringify(parsed, null, 2);
+    if(parsed && Array.isArray(parsed.scenes)){ let ch3=await enforceVOLimits(parsed); if(sbActive() && addSbLeakGuards(parsed)) ch3=true; if(ch3) js = JSON.stringify(parsed, null, 2); }
     renderVideo(parsed,js||raw,productName,retrySc,container,{failed:false});
   }catch(err){
     renderVideo(null,'',productName,retrySc,container,{failed:true,angle:retryAngle,errorMsg:err.message||'Gagal lagi, coba sekali lagi'});
