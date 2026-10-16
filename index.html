@@ -1882,6 +1882,7 @@ voice_rule: ${voiceRuleNote}
 quality_rule: ${qualityRuleNote}
 pacing_rule: Cuts every ${cutEveryLine}. ${isFactoryCrisis?'Tense and urgent, but observational — not hype energy.':isAnomaly?'Story-paced — let emotional character beats breathe, do not rush the transformation moment.':'Energy must be high throughout. No dead air.'}
 
+${complianceBlock()}
 =========================================================
 OUTPUT STRUCTURE — return EXACTLY this JSON shape
 =========================================================
@@ -2346,6 +2347,12 @@ HOOK WRITING RULES
 - Every hook must stay truthful to the product description given — no fabricated claims, fake numbers, or promises not supported by the description
 
 =========================================================
+COMPLIANCE (TikTok-safe — applies to hooks, captions and hashtags)
+=========================================================
+- No instant or time-bound results (langsung, seketika, instan, dalam X menit), no guarantees or absolutes (pasti, dijamin, 100%, terbukti, ampuh, tuntas), no promised outcomes or before-after claims, no medical claims, no superlatives or comparisons to other brands (terbaik, paling, nomor 1), no fake urgency/scarcity/social proof (buruan, sebelum kehabisan, stok terbatas, viral, ribuan orang). Focus on benefits, features and how the product is used, with hedged wording (bisa membantu, memudahkan, cocok buat).
+- Humor, relatable irony and curiosity are fine as long as they do not promise a result.
+
+=========================================================
 CAPTION RULES
 =========================================================
 - Each hook gets its own caption (the text posted alongside the video, below the hook) — 1-3 short sentences, same casual voice as the hook, naturally continuing/supporting the hook's angle
@@ -2402,8 +2409,9 @@ function renderHookCaption(parsed,raw,name){
   const vars=(parsed&&Array.isArray(parsed.variations))?parsed.variations:null;
   if(vars&&vars.length){
     vars.forEach((v,i)=>{
-      const hookTxt=String(v.hook||'').trim();
-      const capTxt=String(v.caption||'').trim()||'(caption kosong dari AI — coba generate ulang)';
+      const safeTxt=t=>String(t||'').split('\n').map(l=>voViolations(l).length?localSoften(l):l).join('\n').trim();
+      const hookTxt=safeTxt(v.hook);
+      const capTxt=safeTxt(v.caption)||'(caption kosong dari AI — coba generate ulang)';
       const tags=(Array.isArray(v.hashtags)?v.hashtags.join(' '):String(v.hashtags||'').trim())||'(hashtag kosong dari AI — coba generate ulang)';
       const copyAll=[hookTxt,'',capTxt,'',tags].join('\n');
       html+=`<div class="icard" style="max-width:100%;"><div class="icard-hdr" style="flex-wrap:wrap;gap:8px;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;"><span class="ibadge ib-hero">#${i+1}</span><span style="font-size:12px;color:var(--muted);overflow-wrap:anywhere;">${h(v.angle_label||'')}</span></div><button class="btn-copy" data-copy-key="${stash(copyAll)}" title="Copy hook + caption + hashtag sekaligus, dipisah baris kosong" style="flex-shrink:0;white-space:nowrap;">&#128203; Copy Semua</button></div>
@@ -2472,7 +2480,7 @@ HOW TO APPLY THE BLUEPRINT:
 - motion_prompt.subject_motion MUST be written as a time-coded sequence using the local ranges (e.g. "0-1.7s: ...; 1.7-3.4s: ...") so the i2v generator performs each beat at the right second. visual_prompt (environment/subject/composition) must describe the same person, place and product as the beats — you may enrich with lens, lighting and motion detail but never change what happens.
 - If a beat continues from the previous clip, start this clip exactly where the previous clip's last frame ended (same pose, position and framing); if it continues into the next clip, end mid-action so the next clip can pick it up.
 - overlay_design: headline.text = on-screen headline of the first beat in the clip (keep wording; "MAX 4 WORDS" does not apply); put the later beats' headlines in keyword.text joined with " → " and callout chips in badge.text; every beat's text also goes in its timeline entry. If a MANUAL HOOK OVERRIDE appears earlier in this prompt, it replaces the first clip's opening headline.
-- voice_over_script of a clip = the VO lines of its beats in order, wording kept BUT the total must stay within the clip's word budget stated above (about 2.4 words per second). If the beats' VO lines add up to more words than the budget, shorten them (keep the hook and the closing action) instead of exceeding it — a script longer than the clip gets cut off in the video. The specificity and anti-repetition rules do NOT apply to rewriting these lines.
+- voice_over_script of a clip = the VO lines of its beats in order, wording kept EXCEPT any line that breaks the TIKTOK-SAFE COMPLIANCE rules (rewrite those safely) BUT the total must stay within the clip's word budget stated above (about 2.4 words per second). If the beats' VO lines add up to more words than the budget, shorten them (keep the hook and the closing action) instead of exceeding it — a script longer than the clip gets cut off in the video. The specificity and anti-repetition rules do NOT apply to rewriting these lines.
 - THE STORYBOARD IS BEHIND-THE-SCENES ONLY. Never reproduce any storyboard UI in the video: no scene numbers, no time-range pills (like "7-8.5s"), no scene label captions (like "Menyapu area sekitar sofa"), no VO boxes, no panel borders or grid. Beat labels and time codes inside "timeline" and "motion_prompt" are timing instructions for the generator, NOT text to display. The ONLY text allowed on screen is what overlay_design specifies (and nothing at all if the style forbids on-screen text). Write the footage as clean full-frame 9:16 video, and add the storyboard-UI terms above to each scene's negative_prompt.
 - Set marketing_angle to match the angle this storyboard tells.
 - The active Gaya Konten style and CTA setting STILL win where they conflict: if the style forbids voice over or on-screen text those fields stay empty (timeline voice_over/on_screen_text too); if the style dictates camera language (handheld POV, hands only, no talent face) keep the beats, order, timing and messaging but execute them in that style's visual language; if CTA is disabled, drop any cart/CTA wording from the final beat.
@@ -2544,6 +2552,94 @@ JSON:
 }
 makePills('v-src',v=>setSrcMode(v));
 
+// ── TIKTOK-SAFE COMPLIANCE (no overclaim anywhere in VO / on-screen text) ──
+const COMPLY_SRC=[
+  // instant / time-bound results
+  '\\b(langsung|seketika|instan|instant(ly)?|sekejap|serta-merta|sekelip mata|overnight|in seconds|in minutes)\\b',
+  '\\b(dalam|hanya|cuma|cukup|dlm|dalam masa|within|in)\\s+\\d+\\s*(detik|menit|jam|hari|minggu|bulan|seconds?|minutes?|hours?|days?|weeks?)\\b',
+  '\\b\\d+\\s*(detik|menit|jam|hari|minggu|bulan)\\b',
+  '\\b(sekali|1x|1 kali)\\s+(sikat|usap|lap|sapu|semprot|oles|pakai|pake|poles|cuci|bilas|tekan|gosok)\\b',
+  // guarantees / absolutes
+  '\\b(100\\s?%|seratus persen|pasti|dijamin|terjamin|terbukti|ampuh|manjur|mujarab|tuntas|permanen|permanent|selamanya|anti gagal|guaranteed|miracle)\\b',
+  '\\b(tanpa (sisa|bekas)|tidak bersisa|nggak bersisa|gak bersisa|bersih total|sampai ke akar|nggak (akan )?balik lagi|gak (akan )?balik lagi)\\b',
+  // promised outcomes / transformations
+  '\\bhasil(nya)?\\s+(nyata|maksimal|memuaskan|terlihat|kelihatan|langsung)\\b',
+  '\\b(membasmi|basmi|memusnahkan|menghabisi|bebas total|mati kering)\\b',
+  // medical / health
+  '\\b(menyembuhkan|mengobati|sembuh|mencegah penyakit|cures?|heals?)\\b',
+  // superlatives / comparisons
+  '\\b(terbaik|terlaris|best seller|nomor (1|satu)|no\\.? ?1|paling (ampuh|efektif|bagus|cepat|murah)|lebih (bagus|baik|ampuh|murah) (dari|daripada)|dibanding(kan)? (yang|merk|produk) lain)\\b',
+  // fake urgency / scarcity / social proof
+  '\\b(buruan|cepetan|sebelum kehabisan|keburu habis|stok (terbatas|menipis|tinggal)|promo (hari ini|terakhir)|hari ini aja|wajib (punya|beli|coba)|jangan sampai (nyesel|kehabisan|ketinggalan)|checkout sekarang|viral|ribuan orang|jutaan orang|banyak yang (beli|pakai))\\b'
+];
+const COMPLY_RE=COMPLY_SRC.map(s=>new RegExp(s,'i'));
+function voViolations(t){
+  const out=[]; const text=String(t||'');
+  COMPLY_RE.forEach(r=>{const m=text.match(r); if(m) out.push(m[0]);});
+  return out;
+}
+function localSoften(t){
+  let x=String(t||'');
+  const rules=[
+    [/\b(sekali|1x|1 kali)\s+(sikat|usap|lap|sapu|semprot|oles|pakai|pake|poles|cuci|bilas|tekan|gosok)\b/gi,'$2'],
+    [/\b(dalam|hanya|cuma|cukup|dlm|dalam masa|within|in)\s+\d+\s*(detik|menit|jam|hari|minggu|bulan|seconds?|minutes?|hours?|days?|weeks?)\b/gi,''],
+    [/\b\d+\s*(detik|menit|jam|hari|minggu|bulan)\b/gi,''],
+    [/\b(langsung|seketika|instan|instant(ly)?|sekejap|serta-merta|sekelip mata|overnight|in seconds|in minutes)\b/gi,''],
+    [/\bpasti\b/gi,'bisa'],
+    [/\b(100\s?%|seratus persen|dijamin|terjamin|terbukti( ampuh)?|ampuh|manjur|mujarab|tuntas|permanen|permanent|selamanya|anti gagal|guaranteed|miracle)\b/gi,''],
+    [/\b(tanpa (sisa|bekas)|tidak bersisa|nggak bersisa|gak bersisa|bersih total|sampai ke akar|nggak (akan )?balik lagi|gak (akan )?balik lagi)\b/gi,''],
+    [/\bhasil(nya)?\s+(nyata|maksimal|memuaskan|terlihat|kelihatan|langsung)\b/gi,''],
+    [/\b(membasmi|basmi|memusnahkan|menghabisi)\b/gi,'membantu mengendalikan'],
+    [/\b(bebas total|mati kering)\b/gi,''],
+    [/\b(menyembuhkan|mengobati|sembuh|mencegah penyakit|cures?|heals?)\b/gi,'membantu'],
+    [/\b(terbaik|terlaris|best seller|nomor (1|satu)|no\.? ?1)\b/gi,'pilihan'],
+    [/\bpaling (ampuh|efektif|bagus|cepat|murah)\b/gi,''],
+    [/\blebih (bagus|baik|ampuh|murah) (dari|daripada)[^.,!?]*/gi,''],
+    [/\bdibanding(kan)? (yang|merk|produk) lain\b/gi,''],
+    [/\b(buruan|cepetan|sebelum kehabisan|keburu habis|stok (terbatas|menipis|tinggal( \d+)?)|promo (hari ini|terakhir)( aja)?|hari ini aja|wajib (punya|beli|coba)|jangan sampai (nyesel|kehabisan|ketinggalan)|checkout sekarang|viral|ribuan orang|jutaan orang|banyak yang (beli|pakai))\b/gi,'']
+  ];
+  rules.forEach(([re,rep])=>{x=x.replace(re,rep);});
+  return x.replace(/\s+([,.!?])/g,'$1').replace(/([,;:])\s*([,.!?])/g,'$2').replace(/\s{2,}/g,' ').replace(/^[\s,.;:!?-]+/,'').trim();
+}
+function dropViolating(t){
+  const clauses=String(t||'').split(/(?<=[.!?,;])\s+/).filter(Boolean);
+  let kept=clauses.filter(c=>!voViolations(c).length).map(c=>c.trim());
+  if(!kept.length) return 'Cek detailnya di keranjang kuning ya.';
+  let out=kept.join(' ').replace(/[,;]+$/,'').trim();
+  out=out.replace(/([.!?])\s+([a-z])/g,(m,a,b)=>a+' '+b.toUpperCase());
+  out=out.charAt(0).toUpperCase()+out.slice(1);
+  if(!/[.!?]$/.test(out)) out+='.';
+  return out;
+}
+function complianceBlock(){
+  return `
+=========================================================
+TIKTOK-SAFE COMPLIANCE — HIGHEST PRIORITY, OVERRIDES EVERYTHING ABOVE (examples, marketing angles, CTA styles, storyboard wording)
+=========================================================
+The user's account was already penalized several times because of voice over claims. EVERY spoken line (voice_over_script and timeline voice_over) and EVERY on-screen text (overlay headline/keyword/badge, caption, timeline on_screen_text) must be free of overclaims. Focus ONLY on benefits, features and how the product is used.
+
+NEW VO STRUCTURE (replaces any VO structure described above):
+1. Relatable situation — a normal everyday observation, no exaggeration (e.g. "Lantai rumah lagi sering banyak remah.")
+2. Introduce the product — what it is.
+3. One or two concrete features the viewer can SEE in the video (shape, material, size, how it is used).
+4. A soft, hedged benefit — what it can help with or make easier, using wording like "bisa membantu", "memudahkan", "dirancang untuk", "cocok buat", "terasa lebih praktis", "menurut aku ..." (an opinion about a feature, never a guaranteed result).
+5. A gentle close that invites the viewer to check the details (e.g. "Cek detailnya di keranjang kuning ya") — no pressure.
+Adapt to the number of scenes and scene length, keep it short and natural.
+
+NEVER write any of these, in any language, including paraphrases:
+- Instant or time-bound results: "langsung bersih", "sekali sikat/usap/lap/pakai langsung ...", "seketika", "instan", "dalam X detik/menit/jam/hari", "cuma X menit", "cepet banget hilang", "instantly", "in seconds".
+- Guarantees and absolutes: "pasti", "dijamin", "100%", "terbukti", "ampuh", "manjur", "tuntas", "tanpa sisa", "bersih total", "permanen", "selamanya", "anti gagal", "nggak akan balik lagi".
+- Promised outcomes or transformations: "hasilnya nyata/maksimal/memuaskan", before-after promises, "tikus mati kering", "kuman hilang". Describe the product action instead (what it is used for, how it is placed or used), never the guaranteed outcome.
+- Medical or health claims: menyembuhkan, mengobati, mencegah penyakit, "aman 100%".
+- Superlatives and comparisons: "terbaik", "paling ...", "nomor 1", "lebih bagus dari yang lain", other brands.
+- Fake urgency, scarcity or social proof: "buruan", "sebelum kehabisan", "stok terbatas", "promo hari ini aja", "wajib punya", "jangan sampai nyesel", "viral", "ribuan orang sudah beli", "best seller" (unless the user explicitly provided it).
+- Invented personal results or testimonials: "aku udah pakai dan langsung ...", made-up before/after stories.
+
+Marketing angle adaptation: Comparison = compare only with "cara biasa", never other brands; Before After / Expectation vs Reality = describe the situation and how the product is used, never promise the result; Shocking Fact / Myth / Secret / Expert Tip = no invented statistics or authority claims.
+If the storyboard or any example above contains a line that breaks these rules, rewrite it safely and keep its role in the scene. Before returning the JSON, check every VO and text line against this list.
+`;
+}
+
 // ── STORYBOARD LEAK GUARD: storyboard UI (scene number, time pill, label, VO box) must never appear in the video ──
 const SB_LEAK_NEG='storyboard panel layout, storyboard grid or frames, scene number badge, timestamp or time-range pill, scene label caption, burned-in time codes, voice over text box, subtitle labels describing the action, behind-the-scenes text, on-screen text that is not in overlay_design';
 function addSbLeakGuards(parsed){
@@ -2582,33 +2678,56 @@ function trimVOLocal(text,max){
   }
   return out;
 }
-async function shortenVO(text,max,lang){
+async function rewriteVO(text,max,lang,issues){
   try{
-    const sys=`You shorten voice over scripts for short videos. Rewrite the script to AT MOST ${max} words in ${lang||'the same language'}, same casual spoken tone. Keep the opening hook, keep ONE concrete product detail, and keep the closing call to action if the original has one (e.g. "klik keranjang kuning"). Drop filler and repeated ideas. Output ONLY the rewritten script as plain text, no quotes, no explanation.`;
+    const sys=`You rewrite voice over scripts for TikTok product videos so they are policy-safe and fit the time. Rewrite to AT MOST ${max} words in ${lang||'the same language'}, casual spoken tone.
+Rules: focus only on benefits, features and how the product is used. NEVER include instant or time-bound results (langsung, seketika, instan, dalam X menit/detik), guarantees or absolutes (pasti, dijamin, 100%, terbukti, ampuh, tuntas, tanpa sisa, permanen), promised outcomes or before-after claims, medical claims, superlatives or comparisons (terbaik, paling, nomor 1), fake urgency/scarcity/social proof (buruan, sebelum kehabisan, stok terbatas, viral), or invented personal results.
+Use hedged wording such as "bisa membantu", "memudahkan", "dirancang untuk", "cocok buat", "terasa lebih praktis". Structure: relatable situation, what the product is, one concrete visible feature, a soft benefit, then a gentle close such as "cek detailnya di keranjang kuning ya" if the original had a call to action.
+${issues&&issues.length?'Problem phrases found in the original: '+issues.join(', ')+'.':''}
+Output ONLY the rewritten script as plain text, no quotes, no explanation.`;
     const data=await geminiWithRetry(getKey(),buildGeminiBody(sys,[{type:'text',text:text}]));
-    let out=String(geminiText(data)||'').replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s*\n+\s*/g,' ');
-    if(out && voWords(out)<=max+1) return out;
+    const out=String(geminiText(data)||'').replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s*\n+\s*/g,' ');
+    if(out && voWords(out)<=max+1 && !voViolations(out).length) return out;
   }catch(e){}
-  return trimVOLocal(text,max);
+  const soft=dropViolating(text);
+  return voWords(soft)>max?trimVOLocal(soft,max):soft;
 }
 async function enforceVOLimits(parsed){
   if(!parsed||!Array.isArray(parsed.scenes)) return false;
   const lang=LANG[document.getElementById('v-country')?.value||'Indonesia'];
   let changed=false;
+  const fix=t=>{const o=localSoften(t); return o;};
   for(const sc of parsed.scenes){
     const vo=String(sc.voice_over_script||'').trim();
-    if(!vo) continue;
-    const secs=sceneSecs(sc,vScene);
-    const target=Math.max(3,Math.round(secs*2.4)), trigger=Math.round(secs*2.6)+1;
-    if(voWords(vo)>trigger){
-      const el=document.getElementById('stxt'); if(el) el.textContent='Merapikan VO biar pas '+sbFmt(secs)+' detik...';
-      sc.voice_over_script=await shortenVO(vo,target,lang);
-      changed=true;
+    if(vo){
+      const secs=sceneSecs(sc,vScene);
+      const target=Math.max(3,Math.round(secs*2.4)), trigger=Math.round(secs*2.6)+1;
+      const tooLong=voWords(vo)>trigger, issues=voViolations(vo);
+      if(tooLong||issues.length){
+        const el=document.getElementById('stxt'); if(el) el.textContent='Merapikan VO biar aman & pas '+sbFmt(secs)+' detik...';
+        const max=tooLong?target:Math.max(3,Math.min(voWords(vo),trigger));
+        let out=await rewriteVO(vo,max,lang,issues);
+        if(voViolations(out).length) out=dropViolating(out);
+        sc.voice_over_script=out; changed=true;
+      }
+    }
+    // on-screen texts + timeline: soften any leftover claim wording
+    const od=sc.overlay_design;
+    if(od&&typeof od==='object'){
+      ['badge','headline','keyword'].forEach(k=>{
+        const o=od[k]; if(o&&typeof o==='object'&&o.text&&voViolations(o.text).length){o.text=fix(o.text);changed=true;}
+      });
+    }
+    if(sc.caption&&voViolations(sc.caption).length){sc.caption=fix(sc.caption);changed=true;}
+    if(Array.isArray(sc.timeline)){
+      sc.timeline.forEach(t=>{
+        if(t&&t.voice_over&&voViolations(t.voice_over).length){t.voice_over=fix(t.voice_over);changed=true;}
+        if(t&&t.on_screen_text&&voViolations(t.on_screen_text).length){t.on_screen_text=fix(t.on_screen_text);changed=true;}
+      });
     }
   }
   return changed;
 }
-
 // ── Helpers ──
 // Flatten nested scene fields into clean, copy-paste-ready prompt strings
 function flattenVisualPrompt(vp){
