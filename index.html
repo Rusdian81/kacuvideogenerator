@@ -125,32 +125,6 @@ select option{background:#1a1a26;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-.sb-head{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;}
-.sb-title{display:inline-block;align-self:flex-start;background:#d6232a;color:#fff;font-weight:800;font-size:13px;letter-spacing:.04em;padding:6px 14px;border-radius:999px;}
-.sb-meta{font-size:13px;color:var(--text);}
-.sb-cons{font-size:11px;color:var(--muted);line-height:1.6;}
-.sb-cons b{color:var(--text);}
-.sb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-@media(max-width:900px){.sb-grid{grid-template-columns:1fr;}}
-.sb-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0;}
-.sb-ph{display:flex;align-items:center;gap:6px;padding:9px 10px;flex-wrap:wrap;}
-.sb-num{width:26px;height:26px;border-radius:50%;background:#d6232a;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.sb-time{background:#d6232a;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
-.sb-lbl{background:#fff;color:#111;font-size:12px;font-weight:700;padding:3px 11px;border-radius:999px;outline:none;}
-.sb-vis{position:relative;min-height:230px;padding:12px;display:flex;flex-direction:column;gap:8px;justify-content:space-between;}
-.sb-visdesc{font-size:12.5px;line-height:1.55;color:#f2f2fa;background:rgba(0,0,0,.38);border-radius:8px;padding:8px 10px;outline:none;}
-.sb-cam{font-size:10.5px;color:#d8d8ee;opacity:.85;}
-.sb-sticker{align-self:flex-start;background:#fff;color:#111;font-weight:900;font-size:15px;line-height:1.2;padding:8px 12px;border-radius:6px;transform:rotate(-2deg);box-shadow:0 3px 0 #d6232a;max-width:78%;outline:none;}
-.sb-chips{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
-.sb-chip{background:#fff;color:#111;font-size:11.5px;font-weight:700;padding:4px 10px 4px 8px;border-radius:999px;display:flex;align-items:center;gap:6px;}
-.sb-chip i{font-style:normal;background:#d6232a;color:#fff;border-radius:50%;width:15px;height:15px;font-size:10px;display:flex;align-items:center;justify-content:center;}
-.sb-thumb{position:absolute;right:10px;bottom:10px;width:64px;height:64px;object-fit:cover;border-radius:8px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);}
-.sb-vo{display:flex;align-items:center;gap:9px;background:#14141c;margin:0 10px 10px;border-radius:10px;padding:8px 10px;}
-.sb-vodot{background:#d6232a;color:#fff;font-weight:800;font-size:11px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.sb-votxt{font-size:12.5px;line-height:1.5;color:#fff;outline:none;flex:1;min-width:0;overflow-wrap:anywhere;}
-.sb-noVO .sb-vo{opacity:.5;}
-[contenteditable]:focus{box-shadow:0 0 0 2px var(--accent);}
-.sb-follow-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px;}
 </style>
 </head>
 <body>
@@ -200,7 +174,6 @@ select option{background:#1a1a26;}
 </header>
 <div class="main-tabs">
   <div class="main-tab active" onclick="switchTab('video')">&#9654;&nbsp; Video Prompt</div>
-  <div class="main-tab" onclick="switchTab('storyboard')">&#128203;&nbsp; Storyboard</div>
   <div class="main-tab" onclick="switchTab('image')">&#9670;&nbsp; Image Prompt</div>
   <div class="main-tab" onclick="switchTab('hook')">&#9998;&nbsp; Hook &amp; Caption</div>
 </div>
@@ -210,7 +183,12 @@ select option{background:#1a1a26;}
 <div class="tab-panel active" id="tab-video">
   <div class="panel-left">
     <div>
-      <div class="slabel">Upload Produk</div>
+      <div class="slabel">Sumber Input</div>
+      <div class="pill-group" id="v-src" style="margin-bottom:10px;">
+        <div class="pill active" data-val="product">&#128247; Foto Produk</div>
+        <div class="pill" data-val="storyboard">&#128203; Gambar Storyboard</div>
+      </div>
+      <div class="slabel" id="vp-slabel">Upload Produk</div>
       <div class="upload-zone" id="vp-zone">
         <input type="file" id="vp-file" accept="image/*" onchange="handleUpload(event,'vp')">
         <div class="upload-icon">&#128247;</div>
@@ -218,7 +196,7 @@ select option{background:#1a1a26;}
         <img class="upload-preview" id="vp-prev">
       </div>
       <button class="analyze-btn" id="vp-analyze" onclick="analyzeProduct()">&#128269; Analisis Produk dengan AI</button>
-      <button class="analyze-btn" id="vp-sb-btn" onclick="switchTab('storyboard');generateStoryboard()" style="margin-top:6px;">&#128203; Buat Storyboard dari Produk Ini</button>
+      <div id="vp-sbinfo" style="display:none;font-size:11.5px;color:var(--muted);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px;"></div>
       <div class="ai-result" id="vp-airesult"><div class="ai-tag">AI Detected</div><div id="vp-aitext"></div></div>
     </div>
     <div class="field"><label>Nama produk</label><input type="text" id="vp-name" placeholder="Auto-fill setelah analisis, atau isi manual"></div>
@@ -295,14 +273,6 @@ select option{background:#1a1a26;}
         <div class="pill" data-val="Split Screen">Split Screen</div>
         <div class="pill" data-val="Text Story">Text Story</div>
       </div>
-    </div>
-    <div id="sb-follow-field" style="display:none;">
-      <div class="slabel">Storyboard</div>
-      <div class="pill-group" id="v-sbfollow">
-        <div class="pill active" data-val="on">&#128203; Ikuti Storyboard</div>
-        <div class="pill" data-val="off">Abaikan</div>
-      </div>
-      <div class="sb-follow-note" id="sb-follow-note"></div>
     </div>
     <div>
       <div class="slabel">Hook Scene 1</div>
@@ -458,48 +428,6 @@ Anjloknya kebangetan"></textarea>
     <button class="btn-gen" id="hc-btn" onclick="generateHookCaption()">Generate Hook &amp; Caption</button>
   </div>
   <div class="panel-right" id="hc-out"><div class="out-ph"><div class="ic">&#9998;</div><p>Isi detail produk untuk generate hook, caption, dan hashtag.</p></div></div>
-</div>
-
-<!-- STORYBOARD TAB -->
-<div class="tab-panel" id="tab-storyboard">
-  <div class="panel-left">
-    <div class="field" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
-      <label style="margin-bottom:4px;">Produk (diambil dari tab Video Prompt)</label>
-      <div id="sb-src" style="font-size:13px;color:var(--text);">-</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Foto produk, nama, deskripsi, talent, negara &amp; platform ikut dari tab Video Prompt.</div>
-    </div>
-    <div>
-      <div class="slabel">Jumlah Scene</div>
-      <div class="pill-group" id="sb-scenes">
-        <div class="pill" data-val="4">4</div>
-        <div class="pill" data-val="5">5</div>
-        <div class="pill active" data-val="6">6</div>
-        <div class="pill" data-val="8">8</div>
-      </div>
-    </div>
-    <div>
-      <div class="slabel">Durasi Total</div>
-      <div class="pill-group" id="sb-dur">
-        <div class="pill" data-val="8">8s</div>
-        <div class="pill active" data-val="10">10s</div>
-        <div class="pill" data-val="15">15s</div>
-        <div class="pill" data-val="20">20s</div>
-      </div>
-    </div>
-    <div>
-      <div class="slabel">Closing</div>
-      <div class="pill-group" id="sb-cta">
-        <div class="pill active" data-val="on">&#9989; Pakai CTA</div>
-        <div class="pill" data-val="off">&#128683; Tanpa CTA</div>
-      </div>
-    </div>
-    <div class="field">
-      <label>Arahan tambahan <span style="color:var(--muted);font-size:11px;">(opsional)</span></label>
-      <textarea id="sb-notes" rows="3" placeholder="cth: setting dapur, fokus ke masalah bau, talent berhijab, tone santai..."></textarea>
-    </div>
-    <button class="btn-gen" id="sb-btn" onclick="generateStoryboard()">&#128203; Generate Storyboard</button>
-  </div>
-  <div class="panel-right" id="sb-out"><div class="out-ph"><div class="ic">&#128203;</div><p>Isi produk di tab Video Prompt, lalu generate storyboard. Storyboard yang jadi akan dipakai sebagai acuan JSON prompt.</p></div></div>
 </div>
 </main>
 
@@ -814,15 +742,14 @@ document.addEventListener('click',function(e){
   }
 });
 let vStyle="UGC",vDur=15,vScene=6,vPlatforms=["6s"];
-let activeStoryboard=null, sbFollow=true, sbScenes=6, sbDur=10, sbCta=true;
+let activeStoryboard=null, srcMode='product';
 let iStyle="Commercial Editorial",iRatio="9:16";
 const LANG={Indonesia:"Bahasa Indonesia",Malaysia:"Bahasa Malaysia",Singapore:"Singapore English",Thailand:"Thai",Philippines:"Filipino English"};
 
 function switchTab(t){
-  document.querySelectorAll('.main-tab').forEach((el,i)=>el.classList.toggle('active',['video','storyboard','image','hook'][i]===t));
+  document.querySelectorAll('.main-tab').forEach((el,i)=>el.classList.toggle('active',['video','image','hook'][i]===t));
   document.querySelectorAll('.tab-panel').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if(t==='storyboard'&&typeof refreshSbSource==='function') refreshSbSource();
 }
 
 function handleUpload(e,key){
@@ -841,6 +768,7 @@ function handleUpload(e,key){
 }
 
 async function analyzeProduct(){
+  if(srcMode==='storyboard') return analyzeStoryboard();
   if(!b64store.vp){alert('Upload foto produk dulu!');return;}
   const btn=document.getElementById('vp-analyze');
   btn.disabled=true; btn.textContent='Menganalisis...';
@@ -993,7 +921,7 @@ document.querySelectorAll('#v-platforms .pcard').forEach(p=>{
 });
 
 function updateSI(){
-  if(typeof sbNote==='function') sbNote();
+  if(typeof sbInfoRefresh==='function') sbInfoRefresh();
   const c=Math.max(1,Math.ceil(vDur/vScene));
   document.getElementById('sc-count').textContent=c+' scenes';
   document.getElementById('sc-dur').textContent=vDur+'s';
@@ -2008,6 +1936,7 @@ Each scene object — STANDALONE, complete, copy-pasteable to video generator:
 }
 
 async function generateVideo(angleCount=1){
+  if(srcMode==='storyboard'&&!sbActive()){alert('Baca storyboard dulu: upload gambar storyboard lalu klik "Baca Storyboard dengan AI".');return;}
   const name=document.getElementById('vp-name').value.trim();
   const desc=document.getElementById('vp-desc').value.trim();
   const talent=document.getElementById('vt-text').value.trim();
@@ -2487,17 +2416,10 @@ function renderHookCaption(parsed,raw,name){
   document.getElementById('hc-out').innerHTML=html;
 }
 
-// ── STORYBOARD (blueprint for JSON prompt) ──
-const SB_LS='omniflash_storyboard';
-function sbActive(){return !!(activeStoryboard && sbFollow && Array.isArray(activeStoryboard.scenes) && activeStoryboard.scenes.length);}
+// ── STORYBOARD IMAGE MODE (storyboard image = blueprint for the JSON prompt) ──
 function sbFmt(n){n=Number(n);if(!isFinite(n))return '0';return String(Math.round(n*10)/10);}
 function sbRange(s){return sbFmt(s.start)+'-'+sbFmt(s.end)+'s';}
-function sbSave(){try{localStorage.setItem(SB_LS,JSON.stringify(activeStoryboard));}catch(e){}}
-function refreshSbSource(){
-  const el=document.getElementById('sb-src'); if(!el) return;
-  const n=(document.getElementById('vp-name')?.value||'').trim();
-  el.textContent=n||'(belum diisi — isi nama produk di tab Video Prompt)';
-}
+function sbActive(){return !!(srcMode==='storyboard' && activeStoryboard && Array.isArray(activeStoryboard.scenes) && activeStoryboard.scenes.length);}
 function sbScaled(){
   const sb=activeStoryboard, f=vDur/(Number(sb.duration_sec)||vDur||1);
   return sb.scenes.map(x=>({label:x.label||'',visual:x.visual||'',camera:x.camera||'',overlay_text:x.overlay_text||'',callouts:Array.isArray(x.callouts)?x.callouts.filter(Boolean):[],shows_product:!!x.shows_product,vo:x.vo||'',
@@ -2515,17 +2437,6 @@ function sbClips(){
     clips.push({k,w0,w1,beats:list,label:list.map(b=>b.label).join(' + ')||('Scene '+(k+1))});
   }
   return clips;
-}
-function sbNote(){
-  const note=document.getElementById('sb-follow-note');
-  if(!note||!activeStoryboard) return;
-  const n=Math.max(1,Math.ceil(vDur/vScene));
-  note.textContent='Storyboard aktif: '+(activeStoryboard.title||activeStoryboard.product_name||'-')+' ('+activeStoryboard.scenes.length+' beat). Timing otomatis diskala ke durasi video '+vDur+'s dan dipecah jadi '+n+' klip (maks '+vScene+'s per scene). Semua gerakan mengikuti storyboard.';
-}
-function refreshSbFollowUI(){
-  const f=document.getElementById('sb-follow-field'); if(!f) return;
-  f.style.display=activeStoryboard?'':'none';
-  sbNote();
 }
 function buildStoryboardBlock(){
   const sb=activeStoryboard, clips=sbClips(), n=clips.length;
@@ -2546,7 +2457,7 @@ function buildStoryboardBlock(){
 =========================================================
 STORYBOARD BLUEPRINT — LOCKED. EVERY MOVEMENT MUST COME FROM THIS STORYBOARD
 =========================================================
-The user already created and approved a storyboard. Its beats were re-timed to the chosen video length (${vDur}s) and split into ${n} clip(s) of at most ${vScene}s each. The generated video must NOT deviate from this storyboard: no extra actions, no skipped beats, no reordered beats, no new locations or story moments.
+The user supplied a storyboard sheet image (it is attached as the reference image — also use it as the visual reference for talent, product and setting). Its content was read into the beats below, which were re-timed to the chosen video length (${vDur}s) and split into ${n} clip(s) of at most ${vScene}s each. The generated video must NOT deviate from this storyboard: no extra actions, no skipped beats, no reordered beats, no new locations or story moments.
 Title: ${sb.title||''}
 Talent (identical person, outfit and look in EVERY clip): ${sb.talent_desc||'as in reference image / auto'}
 Main setting (keep consistent): ${sb.setting_desc||'auto'}
@@ -2565,162 +2476,71 @@ HOW TO APPLY THE BLUEPRINT:
 - The active Gaya Konten style and CTA setting STILL win where they conflict: if the style forbids voice over or on-screen text those fields stay empty (timeline voice_over/on_screen_text too); if the style dictates camera language (handheld POV, hands only, no talent face) keep the beats, order, timing and messaging but execute them in that style's visual language; if CTA is disabled, drop any cart/CTA wording from the final beat.
 `;
 }
-function sbToText(sb){
-  let t=(sb.title||'STORYBOARD')+'\nProduk: '+(sb.product_name||'')+' | Durasi: '+sbFmt(sb.duration_sec)+'s | Format: '+(sb.format||'9:16')+'\nTalent: '+(sb.talent_desc||'')+'\nSetting: '+(sb.setting_desc||'')+'\nProduk visual: '+(sb.product_visual||'')+'\n';
-  sb.scenes.forEach((s,i)=>{
-    t+='\n['+(i+1)+'] '+sbRange(s)+' — '+(s.label||'')+'\nVisual: '+(s.visual||'')+'\nCamera: '+(s.camera||'')+'\nTeks layar: '+(s.overlay_text||'-')+'\nCallout: '+((s.callouts||[]).join(' | ')||'-')+'\nVO: '+(s.vo||'-')+'\n';
-  });
-  return t;
-}
-function useStoryboardInVideo(){
-  sbFollow=true;
-  document.querySelectorAll('#v-sbfollow .pill').forEach(p=>p.classList.toggle('active',p.dataset.val==='on'));
-  refreshSbFollowUI();
-  switchTab('video');
-}
-function renderStoryboard(sb){
-  const out=document.getElementById('sb-out');
-  const hues=[['#3b2a52','#1d1530'],['#1f3b4d','#122230'],['#4a3320','#2a1c10'],['#1f4a3a','#102a21'],['#4a2030','#2a101a'],['#2f3a5a','#171d33'],['#3f3f20','#232310'],['#2a2a2a','#151515']];
-  const thumb=b64store.vp?`data:${b64store.vp.mime};base64,${b64store.vp.data}`:'';
-  const platform=(document.getElementById('v-platform')?.value||'TikTok').toUpperCase();
-  let html=`<div class="sb-head"><span class="sb-title">STORYBOARD VIDEO UGC ${h(platform)}</span>
-    <div class="sb-meta"><b>Produk:</b> ${h(sb.product_name||'')} &nbsp;|&nbsp; <b>Durasi:</b> ${h(sbFmt(sb.duration_sec))} Detik &nbsp;|&nbsp; <b>Format:</b> ${h(sb.format||'9:16')}</div>
-    <div class="sb-cons"><b>Talent:</b> ${h(sb.talent_desc||'-')}<br><b>Setting:</b> ${h(sb.setting_desc||'-')}<br><b>Tampilan produk:</b> ${h(sb.product_visual||'-')}</div>
-    <div style="font-size:11px;color:var(--muted);">Teks di panel bisa diklik &amp; diedit langsung sebelum dipakai ke Video Prompt.</div></div>
-    <div class="sb-grid">`;
-  sb.scenes.forEach((s,i)=>{
-    const g=hues[i%hues.length];
-    const co=(Array.isArray(s.callouts)?s.callouts:[]).filter(Boolean);
-    html+=`<div class="sb-panel">
-      <div class="sb-ph"><span class="sb-num">${i+1}</span><span class="sb-time">${h(sbRange(s))}</span><span class="sb-lbl" contenteditable="true" data-sb-i="${i}" data-sb-f="label">${h(s.label||'')}</span></div>
-      <div class="sb-vis" style="background:linear-gradient(160deg,${g[0]},${g[1]});">
-        <div><div class="sb-visdesc" contenteditable="true" data-sb-i="${i}" data-sb-f="visual">${h(s.visual||'')}</div>${s.camera?`<div class="sb-cam" style="margin-top:5px;">&#127909; ${h(s.camera)}</div>`:''}</div>
-        ${s.overlay_text?`<div class="sb-sticker" contenteditable="true" data-sb-i="${i}" data-sb-f="overlay_text">${h(s.overlay_text)}</div>`:''}
-        ${co.length?`<div class="sb-chips">${co.map(c=>`<div class="sb-chip"><i>&#10003;</i>${h(c)}</div>`).join('')}</div>`:''}
-        ${(s.shows_product&&thumb)?`<img class="sb-thumb" src="${thumb}" alt="">`:''}
-      </div>
-      <div class="sb-vo"><span class="sb-vodot">VO</span><div class="sb-votxt" contenteditable="true" data-sb-i="${i}" data-sb-f="vo">${h(s.vo||'')}</div></div>
-    </div>`;
-  });
-  html+=`</div>
-    <div style="display:flex;gap:9px;flex-wrap:wrap;">
-      <button class="btn-gen" style="width:auto;padding:10px 18px;font-size:13px;" onclick="useStoryboardInVideo()">&#9654; Pakai di Video Prompt</button>
-      <button class="btn-copy" style="padding:10px 14px;" data-copy-key="__sbtext__">&#128203; Copy Storyboard</button>
-      <button class="btn-copy" style="padding:10px 14px;" onclick="generateStoryboard()">&#8635; Generate Ulang</button>
-    </div>`;
-  out.innerHTML=html;
-  // copy button reads fresh text (includes edits)
-  const cb=out.querySelector('[data-copy-key="__sbtext__"]');
-  if(cb){cb.removeAttribute('data-copy-key');cb.onclick=()=>copyText(sbToText(activeStoryboard),cb);}
-}
-async function generateStoryboard(){
-  const name=document.getElementById('vp-name').value.trim();
-  const desc=document.getElementById('vp-desc').value.trim();
-  const talent=document.getElementById('vt-text').value.trim();
-  const country=document.getElementById('v-country').value;
-  const social=document.getElementById('v-platform').value;
-  const notes=document.getElementById('sb-notes').value.trim();
-  if(!name){alert('Isi nama produk dulu di tab Video Prompt (atau klik "Analisis Produk dengan AI").');switchTab('video');return;}
-  const lang=LANG[country];
-  const hookM=(hookMode==='manual')?(document.getElementById('hook-manual-text')?.value||'').trim():'';
-  const labelSets={
-    4:['Hook – Masalah','Kenalkan Produk','Hasil Nyata',sbCta?'Closing – CTA':'Closing'],
-    5:['Hook – Masalah','Kenalkan Produk','Cara Penggunaan','Hasil Nyata',sbCta?'Closing – CTA':'Closing'],
-    6:['Hook – Masalah','Kenalkan Produk','Detail Produk','Cara Penggunaan','Hasil Nyata',sbCta?'Closing – CTA':'Closing'],
-    8:['Hook – Masalah','Kenalkan Produk','Detail Produk','Keunggulan','Cara Penggunaan','Hasil Nyata','Bukti / Review',sbCta?'Closing – CTA':'Closing']
-  };
-  const labels=labelSets[sbScenes]||labelSets[6];
-  const btn=document.getElementById('sb-btn');
-  btn.disabled=true; btn.textContent='Generating...';
-  const sys=`You are OMNI FLASH STORYBOARD DIRECTOR — you plan short-form UGC affiliate videos (TikTok/Reels/Shorts) as a clear scene-by-scene storyboard that a creator or an image-to-video generator can execute exactly.
-Output ONLY valid JSON. No markdown, no commentary.
 
-Product: ${name}
-Description: ${desc||'(infer from image)'}
-Talent: ${talent||'auto — one consistent relatable creator'}
-Platform: ${social} | Language for all spoken/on-screen text: ${lang}
-Total duration: ${sbDur}s | Scenes: ${sbScenes} | Format 9:16
-${notes?'Extra direction from the user: '+notes:''}
-
-SCENE FLOW (in this order, one scene each): ${labels.map((l,i)=>(i+1)+'. '+l).join(' | ')}
-
-RULES:
-- Timings are contiguous: scene 1 starts at 0, each next scene starts where the previous ended, the last scene ends exactly at ${sbDur}. Scene lengths may differ (e.g. short hook, longer demo) — do not force equal lengths.
-- ONE talent (same look, outfit) and ONE main setting for the whole storyboard unless the story really needs a second spot. Describe them once in talent_desc / setting_desc, and product_visual = exact packaging look (colors, shape, label text) taken from the reference image.
-- "visual" = a concrete, filmable description of what is seen in that scene: who, what they do, where, framing. One moment per scene, no multiple actions crammed together. 1-2 sentences.
-- "camera" = short shot note (e.g. "medium close-up, handheld", "macro on product", "over-the-shoulder").
-- "overlay_text" = the on-screen headline, max 6 words, casual and punchy.${hookM?' Scene 1 overlay_text MUST be exactly: "'+hookM+'".':''} Leave "" if a scene needs no text.
-- "callouts" = 0-3 short check-mark benefit chips (max 4 words each), only where they help (e.g. product intro / detail scenes).
-- "shows_product" = true when the product package/item is visible in that scene.
-- "vo" = spoken line in ${lang}, natural spoken style, about 2.4 words per second of that scene's length (at most ~3 words/second). Total voice over must feel like one flowing script, not disconnected sentences.
-- Hook scene = a relatable problem or pattern interrupt that stops the scroll. Demo scene = how the product is used (show the real action). Result scene = believable outcome.
-- Truthful: only claims supported by the description/image. No fake numbers, no medical or absolute claims ("100%", "pasti sembuh").
-- Last scene: ${sbCta?'a natural closing that nudges the viewer to check the cart/link, matching '+social+' (e.g. TikTok: keranjang kuning), not hard-sell shouting.':'a natural closing statement WITHOUT any call to action — no cart/link/buy prompt.'}
-
-Return ONLY this JSON:
-{
-  "title": "short storyboard title",
-  "product_name": "${name.replace(/"/g,'\\"')}",
-  "duration_sec": ${sbDur},
-  "format": "9:16",
-  "talent_desc": "",
-  "setting_desc": "",
-  "product_visual": "",
-  "scenes": [
-    { "n": 1, "start": 0, "end": 0, "label": "", "visual": "", "camera": "", "overlay_text": "", "callouts": [], "shows_product": true, "vo": "" }
-  ]
+function sbInfoRefresh(){
+  const el=document.getElementById('vp-sbinfo'); if(!el) return;
+  if(srcMode!=='storyboard'||!activeStoryboard){el.style.display='none';return;}
+  const n=Math.max(1,Math.ceil(vDur/vScene));
+  el.style.display='block';
+  el.innerHTML='<b>Storyboard terbaca:</b> '+h(activeStoryboard.title||activeStoryboard.product_name||'-')+' — '+activeStoryboard.scenes.length+' panel ('+sbFmt(activeStoryboard.duration_sec)+'s di gambar).<br>Timing diskala ke durasi video <b>'+vDur+'s</b> dan dipecah jadi <b>'+n+' klip</b> (maks '+vScene+'s per scene). JSON akan mengikuti storyboard ini.';
 }
-Generate exactly ${sbScenes} items in "scenes".`;
-  const parts=[];
-  if(b64store.vp) parts.push({type:'image',source:{type:'base64',media_type:b64store.vp.mime,data:b64store.vp.data}});
-  if(b64store.vt) parts.push({type:'image',source:{type:'base64',media_type:b64store.vt.mime,data:b64store.vt.data}});
-  parts.push({type:'text',text:`Product: ${name}\nDesc: ${desc||'see image'}\nTalent: ${talent||'auto'}\nCreate the storyboard JSON.`});
-  document.getElementById('sb-out').innerHTML=loadingHTML('Menyusun storyboard...');
-  const timer=startCycle(['Menganalisis produk...','Menentukan alur scene...','Menulis visual & VO per scene...','Finalisasi storyboard...']);
+function setSrcMode(m){
+  srcMode=m;
+  // reset upload so a product photo is never mistaken for a storyboard (and vice versa)
+  b64store.vp=null; activeStoryboard=null;
+  const prev=document.getElementById('vp-prev'); if(prev){prev.src='';prev.style.display='none';}
+  const z=document.getElementById('vp-zone'); if(z) z.classList.remove('has-img');
+  const fi=document.getElementById('vp-file'); if(fi) fi.value='';
+  const isSb=(m==='storyboard');
+  document.getElementById('vp-slabel').textContent=isSb?'Upload Gambar Storyboard':'Upload Produk';
+  document.getElementById('vp-lbl').innerHTML=isSb?'<strong>Klik atau drag</strong> gambar storyboard':'<strong>Klik atau drag</strong> foto produk';
+  const a=document.getElementById('vp-analyze'); a.classList.remove('vis');
+  a.innerHTML=isSb?'&#128203; Baca Storyboard dengan AI':'&#128269; Analisis Produk dengan AI';
+  document.getElementById('vp-airesult').classList.remove('vis');
+  sbInfoRefresh(); updateSI();
+}
+async function analyzeStoryboard(){
+  if(!b64store.vp){alert('Upload gambar storyboard dulu!');return;}
+  const btn=document.getElementById('vp-analyze');
+  btn.disabled=true; btn.textContent='Membaca storyboard...';
+  const sys=`You read a storyboard image for a short-form product video and transcribe it into structured JSON. Output ONLY valid JSON, no markdown.
+Read the image carefully, panel by panel in reading order (left to right, top to bottom). Do NOT invent panels, texts or actions that are not in the image.
+For every panel capture: the time range printed on it (start/end in seconds), the scene label, what the picture shows (who, action, place, framing) as "visual", any camera/shot cue, the on-screen headline text, the callout/check-mark chips, whether the product is visible, and the voice-over line (VO box) exactly as written, same language.
+If a time range is not readable, split the total duration evenly. "duration_sec" = end of the last panel (or the total duration written in the header).
+Also read the product name and header info, and describe the talent (look/outfit), the main setting and the exact product packaging look (colors, shape, label text) as seen across panels.
+JSON:
+{"title":"","product_name":"","description":"1-2 sentences on what the product does","category":"","target_audience":"","duration_sec":10,"talent_desc":"","setting_desc":"","product_visual":"","scenes":[{"start":0,"end":1.5,"label":"","visual":"","camera":"","overlay_text":"","callouts":[],"shows_product":true,"vo":""}]}`;
   try{
     const key=getKey();
-    const data=await geminiWithRetry(key,buildGeminiBody(sys,parts));
-    clearInterval(timer);
-    const raw=geminiText(data);
-    let js=extractJSON(raw), parsed=null;
-    try{parsed=JSON.parse(js);}catch(e){js=repairJSON(js);try{parsed=JSON.parse(js);}catch(e2){}}
-    if(!parsed||!Array.isArray(parsed.scenes)||!parsed.scenes.length) throw new Error('Format storyboard dari AI tidak terbaca, coba Generate Ulang.');
-    // normalize timings
-    let cur=0; const per=sbDur/parsed.scenes.length;
-    parsed.scenes.forEach((s,i)=>{
-      s.n=i+1;
+    const body=buildGeminiBody(sys,[
+      {type:'image',source:{type:'base64',media_type:b64store.vp.mime,data:b64store.vp.data}},
+      {type:'text',text:'Transcribe this storyboard image into the JSON.'}
+    ]);
+    const data=await geminiWithRetry(key,body);
+    let js=extractJSON(geminiText(data)), p=null;
+    try{p=JSON.parse(js);}catch(e){js=repairJSON(js);try{p=JSON.parse(js);}catch(e2){}}
+    if(!p||!Array.isArray(p.scenes)||!p.scenes.length) throw new Error('Storyboard nggak terbaca dari gambar. Coba gambar yang lebih jelas / resolusi lebih besar.');
+    let cur=0;
+    const total=Number(p.duration_sec)||0, per=(total||10)/p.scenes.length;
+    p.scenes.forEach((s,i)=>{
       let st=Number(s.start), en=Number(s.end);
-      if(!isFinite(st)||!isFinite(en)||en<=st){st=cur;en=(i===parsed.scenes.length-1)?sbDur:Math.round((cur+per)*10)/10;}
+      if(!isFinite(st)||!isFinite(en)||en<=st){st=cur;en=Math.round((cur+per)*10)/10;}
       s.start=st; s.end=en; cur=en;
-      s.callouts=Array.isArray(s.callouts)?s.callouts.map(String):[];
-      s.label=s.label||labels[i]||('Scene '+(i+1));
-      s.shows_product=!!s.shows_product;
+      s.callouts=Array.isArray(s.callouts)?s.callouts.map(String).filter(Boolean):[];
+      s.label=s.label||('Scene '+(i+1)); s.shows_product=!!s.shows_product;
     });
-    parsed.duration_sec=Number(parsed.duration_sec)||sbDur;
-    parsed.product_name=parsed.product_name||name;
-    activeStoryboard=parsed; sbFollow=true; sbSave();
-    document.querySelectorAll('#v-sbfollow .pill').forEach(p=>p.classList.toggle('active',p.dataset.val==='on'));
-    renderStoryboard(parsed); refreshSbFollowUI();
-  }catch(err){clearInterval(timer);document.getElementById('sb-out').innerHTML=errBox(err.message);}
-  btn.disabled=false; btn.textContent='\u{1F4CB} Generate Storyboard';
+    p.duration_sec=p.scenes[p.scenes.length-1].end;
+    activeStoryboard=p;
+    if(p.product_name) document.getElementById('vp-name').value=p.product_name;
+    if(p.description) document.getElementById('vp-desc').value=p.description;
+    document.getElementById('vp-aitext').innerHTML='<b>'+h(p.product_name||'')+'</b> — '+p.scenes.length+' panel<br><span style="color:var(--muted)">'+p.scenes.map((s,i)=>(i+1)+'. '+h(s.label)+' ('+h(sbRange(s))+')').join('<br>')+'</span>';
+    document.getElementById('vp-airesult').classList.add('vis');
+    btn.innerHTML='&#128203; Baca Ulang Storyboard';
+    sbInfoRefresh(); updateSI();
+  }catch(err){alert('Error: '+err.message);btn.innerHTML='&#128203; Baca Storyboard dengan AI';}
+  btn.disabled=false;
 }
-makePills('sb-scenes',v=>{sbScenes=parseInt(v);});
-makePills('sb-dur',v=>{sbDur=parseInt(v);});
-makePills('sb-cta',v=>{sbCta=(v==='on');});
-makePills('v-sbfollow',v=>{sbFollow=(v==='on');refreshSbFollowUI();});
-document.addEventListener('input',e=>{
-  const el=e.target.closest&&e.target.closest('[data-sb-f]');
-  if(!el||!activeStoryboard) return;
-  const i=parseInt(el.dataset.sbI,10), f=el.dataset.sbF;
-  if(activeStoryboard.scenes[i]){activeStoryboard.scenes[i][f]=el.innerText.trim();sbSave();}
-});
-(function loadSb(){
-  try{
-    const raw=localStorage.getItem(SB_LS); if(!raw) return;
-    const sb=JSON.parse(raw);
-    if(sb&&Array.isArray(sb.scenes)&&sb.scenes.length){activeStoryboard=sb;renderStoryboard(sb);refreshSbFollowUI();}
-  }catch(e){}
-})();
+makePills('v-src',v=>setSrcMode(v));
 
 // ── Helpers ──
 // Flatten nested scene fields into clean, copy-paste-ready prompt strings
